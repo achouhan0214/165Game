@@ -34,12 +34,12 @@ public class MyGame extends VariableFrameRateGame
 
 	private int counter=0;
 	private Vector3f currentPosition;
-	private Matrix4f initialTranslation, initialRotation, initialScale;
+	private Matrix4f initialTranslation, initialRotation, initialScale, initialTranslationWep, initialRotationWep, initialScaleWep;
 	private double startTime, prevTime, elapsedTime, amt;
 
-	private GameObject tor, avatar, x, y, z, terr;
-	private ObjShape torS, ghostS, avaS, linxS, linyS, linzS, terrS, dolS;
-	private TextureImage avaT, ghostT, hills, grass, dolT;
+	private GameObject tor, avatar, x, y, z, terr, weopon;
+	private ObjShape torS, ghostS, avaS, linxS, linyS, linzS, terrS, dolS, wepS;
+	private TextureImage avaT, ghostT, hills, grass, dolT, wepT;
 	private Light light;
 
 
@@ -76,6 +76,7 @@ public class MyGame extends VariableFrameRateGame
 	public void loadShapes()
 	{
 		dolS = new ImportedModel("dolphinLowPoly.obj");
+		wepS = new ImportedModel("weopon.obj");
 		ghostS = new Sphere();
 		avaS = new ImportedModel("human1.2.obj");
 		linxS = new Line(new Vector3f(0f,0f,0f), new Vector3f(3f,0f,0f));
@@ -91,14 +92,14 @@ public class MyGame extends VariableFrameRateGame
 		ghostT = new TextureImage("redDolphin.jpg");
 		avaT = new TextureImage("human1.2color.png");
 		dolT = new TextureImage("Dolphin_HighPolyUV.png");
-
-		hills = new TextureImage("hills.jpg");
-		grass = new TextureImage("grass.jpg");
+		wepT = new TextureImage("weopon.jpg");
+		hills = new TextureImage("heightmap1.jpg");
+		grass = new TextureImage("sand.png");
 	}
 
 	@Override
 	public void buildObjects()
-	{	Matrix4f initialTranslation, initialRotation, initialScale;
+	{	Matrix4f initialTranslation, initialRotation, initialScale, initialTranslationWep, initialRotationWep, initialScaleWep;
 
 		// build dolphin avatar
 		avatar = new GameObject(GameObject.root(), avaS, avaT);
@@ -111,6 +112,24 @@ public class MyGame extends VariableFrameRateGame
 		initialScale = (new Matrix4f()).scaling(0.2f);
 		avatar.setLocalScale(initialScale);
 
+		//build avatar weopon
+		weopon = new GameObject(GameObject.root(), wepS, wepT);
+		initialTranslationWep = (new Matrix4f()).translation(-0.35f,0.1f,0.6f);
+		//weopon.setLocalTranslation(initialTranslationWep);
+		weopon.getRenderStates().setModelOrientationCorrection(
+		(new Matrix4f()).rotationY((float)java.lang.Math.toRadians(90.0f)));
+		initialRotationWep = (new Matrix4f()).rotationY((float)java.lang.Math.toRadians(135.0f));
+		//weopon.setLocalRotation(initialRotationWep);
+		initialScaleWep = (new Matrix4f()).scaling(0.2f);
+		//weopon.setLocalScale(initialScaleWep);
+		weopon.setParent(avatar);
+		//weopon.propagateTranslation(true);
+		//weopon.propagateRotation(true);
+		weopon.applyParentRotationToPosition(true);
+		weopon.setLocalScale(initialScaleWep);
+		//weopon.setLocalRotation(initialRotationWep);
+		weopon.setLocalTranslation(initialTranslationWep);
+		
 
 		// build torus along X axis
 		tor = new GameObject(GameObject.root(), dolS, dolT);
@@ -331,7 +350,7 @@ public class MyGame extends VariableFrameRateGame
 
 	@Override
 	public void loadSkyBoxes()
-	{ fluffyClouds = (engine.getSceneGraph()).loadCubeMap("fluffyClouds");
+	{ fluffyClouds = (engine.getSceneGraph()).loadCubeMap("desert");
 		lakeIslands = (engine.getSceneGraph()).loadCubeMap("lakeIslands");
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
 		(engine.getSceneGraph()).setSkyBoxEnabled(true);
