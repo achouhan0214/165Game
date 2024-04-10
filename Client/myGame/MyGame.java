@@ -40,6 +40,7 @@ public class MyGame extends VariableFrameRateGame
 	private GameObject tor, avatar, x, y, z, terr, weopon;
 	private ObjShape torS, ghostS, avaS, linxS, linyS, linzS, terrS, dolS, wepS;
 	private TextureImage avaT, ghostT, hills, grass, dolT, wepT;
+
 	private Light light;
 
 
@@ -77,7 +78,7 @@ public class MyGame extends VariableFrameRateGame
 	{
 		dolS = new ImportedModel("dolphinLowPoly.obj");
 		wepS = new ImportedModel("weopon.obj");
-		ghostS = new Sphere();
+		ghostS = new ImportedModel("human1.2.obj");
 		avaS = new ImportedModel("human1.2.obj");
 		linxS = new Line(new Vector3f(0f,0f,0f), new Vector3f(3f,0f,0f));
 		linyS = new Line(new Vector3f(0f,0f,0f), new Vector3f(0f,3f,0f));
@@ -89,12 +90,13 @@ public class MyGame extends VariableFrameRateGame
 	@Override
 	public void loadTextures()
 	{
-		ghostT = new TextureImage("redDolphin.jpg");
+		ghostT = new TextureImage("human1.2color.png");
 		avaT = new TextureImage("human1.2color.png");
 		dolT = new TextureImage("Dolphin_HighPolyUV.png");
 		wepT = new TextureImage("weopon.jpg");
 		hills = new TextureImage("heightmap1.jpg");
 		grass = new TextureImage("sand.png");
+
 	}
 
 	@Override
@@ -219,7 +221,7 @@ public class MyGame extends VariableFrameRateGame
 				.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 
 		setupNetworking();
-
+		
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
 		(engine.getSceneGraph()).setSkyBoxEnabled(true);
 	}
@@ -350,7 +352,8 @@ public class MyGame extends VariableFrameRateGame
 
 	@Override
 	public void loadSkyBoxes()
-	{ fluffyClouds = (engine.getSceneGraph()).loadCubeMap("desert");
+	{
+		fluffyClouds = (engine.getSceneGraph()).loadCubeMap("fluffyClouds");
 		lakeIslands = (engine.getSceneGraph()).loadCubeMap("lakeIslands");
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
 		(engine.getSceneGraph()).setSkyBoxEnabled(true);
