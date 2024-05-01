@@ -5,6 +5,8 @@ import java.util.UUID;
 import tage.*;
 import org.joml.*;
 
+
+
 // A ghost MUST be connected as a child of the root,
 // so that it will be rendered, and for future removal.
 // The ObjShape and TextureImage associated with the ghost
@@ -23,5 +25,9 @@ public class GhostAvatar extends GameObject
 	
 	public UUID getID() { return uuid; }
 	public void setPosition(Vector3f m) { setLocalLocation(m); }
+
+	public void setRotaion(Matrix4f rotation){
+		this.setLocalRotation(rotation);
+	}
 	public Vector3f getPosition() { return getWorldLocation(); }
 }

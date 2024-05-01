@@ -24,11 +24,13 @@ public class TurnAction extends AbstractInputAction{
         private Matrix4f oldRotation, rotAroundDolUp, newRotation;
         private Vector4f oldUp;
         private MyGame game;
+        private ProtocolClient protClient;
         /** Gets the Game to apply the action to
          */
-        public TurnAction(MyGame game)
+        public TurnAction(MyGame game, ProtocolClient p)
         {
                 this.game = game;
+                protClient = p;
         }
 
         /** See if the input is A for turning left or
@@ -39,21 +41,32 @@ public class TurnAction extends AbstractInputAction{
         public void performAction(float time, Event e)
         {
                 String event = e.getComponent().toString();
+                float angle = 0;
                 if(event.equals("A"))
                 {
                         dol = game.getDol();
-                        dol.yaw(-.025f);
+                        angle = -0.025f;
+                        dol.yaw(angle);
                 }else{
                         if(event.equals("D"))
                         {
                                 dol = game.getDol();
-                                dol.yaw(.025f);
+                                angle = 0.025f;
+                                dol.yaw(angle);
                         }else{
                                 float keyValue = e.getValue();
                                 if (keyValue > -.2 && keyValue < .2) return; // deadzone
                                 dol = game.getDol();
-                                dol.yaw((keyValue)*.025f);
+                                angle = (keyValue)*.025f;
+                                dol.yaw(angle);
                         }
+                }
+                if (protClient != null)
+                {
+                        //getLocalForwardVector()
+                        //getWorldForwardVector()
+                        Matrix4f rotation = dol.getLocalRotation();
+                        protClient.sendRotationMessage(rotation);
                 }
         }
 }

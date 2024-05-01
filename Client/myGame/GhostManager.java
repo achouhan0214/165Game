@@ -26,6 +26,8 @@ public class GhostManager
 		GhostAvatar newAvatar = new GhostAvatar(id, s, t, position);
 		Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
 		newAvatar.setLocalScale(initialScale);
+		newAvatar.getRenderStates().setModelOrientationCorrection(
+			(new Matrix4f()).rotationY((float)java.lang.Math.toRadians(2250f)));
 		ghostAvatars.add(newAvatar);
 	}
 	
@@ -56,6 +58,15 @@ public class GhostManager
 	{	GhostAvatar ghostAvatar = findAvatar(id);
 		if (ghostAvatar != null)
 		{	ghostAvatar.setPosition(position);
+		}
+		else
+		{	System.out.println("tried to update ghost avatar position, but unable to find ghost in list");
+		}
+	}
+	public void updateGhostAvatarRotation(UUID id, Matrix4f rotation)
+	{	GhostAvatar ghostAvatar = findAvatar(id);
+		if (ghostAvatar != null)
+		{	ghostAvatar.setRotaion(rotation);
 		}
 		else
 		{	System.out.println("tried to update ghost avatar position, but unable to find ghost in list");

@@ -12,61 +12,82 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 	}
 
 	@Override
-	public void processPacket(Object o, InetAddress senderIP, int senderPort)
-	{
-		String message = (String)o;
+	public void processPacket(Object o, InetAddress senderIP, int senderPort) {
+		String message = (String) o;
 		String[] messageTokens = message.split(",");
-		
-		if(messageTokens.length > 0)
-		{	// JOIN -- Case where client just joined the server
+
+		if (messageTokens.length > 0) {        // JOIN -- Case where client just joined the server
 			// Received Message Format: (join,localId)
-			if(messageTokens[0].compareTo("join") == 0)
-			{	try 
-				{	IClientInfo ci;					
+			if (messageTokens[0].compareTo("join") == 0) {
+				try {
+					IClientInfo ci;
 					ci = getServerSocket().createClientInfo(senderIP, senderPort);
 					UUID clientID = UUID.fromString(messageTokens[1]);
 					addClient(ci, clientID);
 					System.out.println("Join request received from - " + clientID.toString());
 					sendJoinedMessage(clientID, true);
-				} 
-				catch (IOException e) 
-				{	e.printStackTrace();
-			}	}
-			
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+
 			// BYE -- Case where clients leaves the server
 			// Received Message Format: (bye,localId)
-			if(messageTokens[0].compareTo("bye") == 0)
-			{	UUID clientID = UUID.fromString(messageTokens[1]);
+			if (messageTokens[0].compareTo("bye") == 0) {
+				UUID clientID = UUID.fromString(messageTokens[1]);
 				System.out.println("Exit request received from - " + clientID.toString());
 				sendByeMessages(clientID);
 				removeClient(clientID);
 			}
-			
+
 			// CREATE -- Case where server receives a create message (to specify avatar location)
 			// Received Message Format: (create,localId,x,y,z)
-			if(messageTokens[0].compareTo("create") == 0)
-			{	UUID clientID = UUID.fromString(messageTokens[1]);
+			if (messageTokens[0].compareTo("create") == 0) {
+				UUID clientID = UUID.fromString(messageTokens[1]);
 				String[] pos = {messageTokens[2], messageTokens[3], messageTokens[4]};
 				sendCreateMessages(clientID, pos);
 				sendWantsDetailsMessages(clientID);
 			}
-			
+
 			// DETAILS-FOR --- Case where server receives a details for message
 			// Received Message Format: (dsfr,remoteId,localId,x,y,z)
-			if(messageTokens[0].compareTo("dsfr") == 0)
-			{	UUID clientID = UUID.fromString(messageTokens[1]);
+			if (messageTokens[0].compareTo("dsfr") == 0) {
+				UUID clientID = UUID.fromString(messageTokens[1]);
 				UUID remoteID = UUID.fromString(messageTokens[2]);
 				String[] pos = {messageTokens[3], messageTokens[4], messageTokens[5]};
 				sendDetailsForMessage(clientID, remoteID, pos);
 			}
-			
+
 			// MOVE --- Case where server receives a move message
 			// Received Message Format: (move,localId,x,y,z)
-			if(messageTokens[0].compareTo("move") == 0)
-			{	UUID clientID = UUID.fromString(messageTokens[1]);
+			if (messageTokens[0].compareTo("move") == 0) {
+				UUID clientID = UUID.fromString(messageTokens[1]);
 				String[] pos = {messageTokens[2], messageTokens[3], messageTokens[4]};
 				sendMoveMessages(clientID, pos);
-	}	}	}
+			}
+			if(messageTokens[0].compareTo("turn") == 0)
+			{	UUID clientID = UUID.fromString(messageTokens[1]);
+				String[] rotation = {
+					messageTokens[2],
+					messageTokens[3],
+					messageTokens[4],
+					messageTokens[5],
+					messageTokens[6],
+					messageTokens[7],
+					messageTokens[8],
+					messageTokens[9],
+					messageTokens[10],
+					messageTokens[11],
+					messageTokens[12],
+					messageTokens[13],
+					messageTokens[14],
+					messageTokens[15],
+					messageTokens[16],
+					messageTokens[17]};
+				sendRotationMessage(clientID, rotation);
+			}
+		}
+	}
 
 	// Informs the client who just requested to join the server if their if their 
 	// request was able to be granted. 
@@ -119,9 +140,9 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 		{	e.printStackTrace();
 	}	}
 	
-	// Informs a client of the details for a remote client’s avatar. This message is in response 
-	// to the server receiving a DETAILS_FOR message from a remote client. That remote client’s 
-	// message’s localId becomes the remoteId for this message, and the remote client’s message’s 
+	// Informs a client of the details for a remote clientï¿½s avatar. This message is in response 
+	// to the server receiving a DETAILS_FOR message from a remote client. That remote clientï¿½s 
+	// messageï¿½s localId becomes the remoteId for this message, and the remote clientï¿½s messageï¿½s 
 	// remoteId is used to send this message to the proper client. 
 	// Message Format: (dsfr,remoteId,x,y,z) where x, y, and z represent the position.
 
@@ -137,7 +158,7 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 		{	e.printStackTrace();
 	}	}
 	
-	// Informs a local client that a remote client wants the local client’s avatar’s information. 
+	// Informs a local client that a remote client wants the local clientï¿½s avatarï¿½s information. 
 	// This message is meant to be sent to all clients connected to the server when a new client 
 	// joins the server. 
 	// Message Format: (wsds,remoteId)
@@ -151,7 +172,7 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 		{	e.printStackTrace();
 	}	}
 	
-	// Informs a client that a remote client’s avatar has changed position. x, y, and z represent 
+	// Informs a client that a remote clientï¿½s avatar has changed position. x, y, and z represent 
 	// the new position of the remote avatar. This message is meant to be forwarded to all clients
 	// connected to the server when it receives a MOVE message from the remote client.   
 	// Message Format: (move,remoteId,x,y,z) where x, y, and z represent the position.
@@ -167,4 +188,30 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 		catch (IOException e) 
 		{	e.printStackTrace();
 	}	}
+
+	public void sendRotationMessage(UUID clientID, String[] rotation)
+	{	try
+	{	String message = new String("turn," + clientID.toString());
+		message += "," + rotation[0];
+		message += "," + rotation[1];
+		message += "," + rotation[2];
+		message += "," + rotation[3];
+		message += "," + rotation[4];
+		message += "," + rotation[5];
+		message += "," + rotation[6];
+		message += "," + rotation[7];
+		message += "," + rotation[8];
+		message += "," + rotation[9];
+		message += "," + rotation[10];
+		message += "," + rotation[11];
+		message += "," + rotation[12];
+		message += "," + rotation[13];
+		message += "," + rotation[14];
+		message += "," + rotation[15];
+		forwardPacketToAll(message, clientID);
+	}
+	catch (IOException e)
+	{	e.printStackTrace();
+	}
+	}
 }

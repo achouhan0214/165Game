@@ -1,6 +1,6 @@
 package tage.input.action;
 
-import a2.*;
+import myGame.*;
 import net.java.games.input.Event;
 import tage.*;
 import tage.input.action.AbstractInputAction;
@@ -24,12 +24,14 @@ public class FwdAction extends AbstractInputAction{
         private Vector3f oldPosition, newPosition;
         private Vector4f fwdDirection;
         private MyGame game;
+        private ProtocolClient protClient;
 
         /** Gets the Game to apply the action to
          */
-        public FwdAction(MyGame game)
+        public FwdAction(MyGame game, ProtocolClient p)
         {
                 this.game = game;
+                protClient = p;
         }
 
         /** See if the input is W for forward or
@@ -70,5 +72,10 @@ public class FwdAction extends AbstractInputAction{
                                 dol.setLocalLocation(newPosition);
                         }
                 }
+                if (protClient != null)
+                {
+                        protClient.sendMoveMessage(dol.getWorldLocation());
+                }
+
         }
 }

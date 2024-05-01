@@ -3,21 +3,34 @@ import tage.networking.IGameConnection.ProtocolType;
 
 public class NetworkingServer 
 {
+	private GameAIServerUDP  gameAIServerUDP;
 	private GameServerUDP thisUDPServer;
 	private GameServerTCP thisTCPServer;
+	private NPCcontroller npcCtrl;
 
 	public NetworkingServer(int serverPort, String protocol) 
-	{	try 
-		{	if(protocol.toUpperCase().compareTo("TCP") == 0)
-			{	thisTCPServer = new GameServerTCP(serverPort);
+	{
+		npcCtrl = new NPCcontroller();
+		try
+		{
+
+			gameAIServerUDP =  new GameAIServerUDP(serverPort, npcCtrl);
+			//thisUDPServer = new GameServerUDP(serverPort);
+
+			/*if(protocol.toUpperCase().compareTo("TCP") == 0)
+			{
+				thisTCPServer = new GameServerTCP(serverPort);
 			}
 			else
-			{	thisUDPServer = new GameServerUDP(serverPort);
-			}
-		} 
+			{
+
+			}*/
+			npcCtrl.start(gameAIServerUDP);
+		}
 		catch (IOException e) 
 		{	e.printStackTrace();
 		}
+
 	}
 
 	public static void main(String[] args) 

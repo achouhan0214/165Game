@@ -1,27 +1,28 @@
 package myGame;
 
-import java.awt.Color;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.Iterator;
 import java.util.UUID;
-import java.util.Vector;
-import org.joml.*;
 
-import tage.*;
+import org.joml.*;
+import org.joml.Matrix4f;
+
 import tage.networking.client.GameConnectionClient;
+
 
 public class ProtocolClient extends GameConnectionClient
 {
 	private MyGame game;
 	private GhostManager ghostManager;
 	private UUID id;
+	private GhostNPC ghostNPC;
 	
 	public ProtocolClient(InetAddress remoteAddr, int remotePort, ProtocolType protocolType, MyGame game) throws IOException 
 	{	super(remoteAddr, remotePort, protocolType);
 		this.game = game;
 		this.id = UUID.randomUUID();
 		ghostManager = game.getGhostManager();
+		//startNPC();
 	}
 	
 	public UUID getID() { return id; }
@@ -105,7 +106,81 @@ public class ProtocolClient extends GameConnectionClient
 					Float.parseFloat(messageTokens[4]));
 				
 				ghostManager.updateGhostAvatar(ghostID, ghostPosition);
-	}	}	}
+			}
+
+			if (messageTokens[0].compareTo("turn") == 0)
+			{
+				// turns a ghost avatar
+				// Parse out the id into a UUID
+				UUID ghostID = UUID.fromString(messageTokens[1]);
+
+				// Parse out the position into a Vector3f
+				Matrix4f rotation = new Matrix4f(
+					Float.parseFloat(messageTokens[2]),
+					Float.parseFloat(messageTokens[3]),
+					Float.parseFloat(messageTokens[4]),
+					Float.parseFloat(messageTokens[5]),
+					Float.parseFloat(messageTokens[6]),
+					Float.parseFloat(messageTokens[7]),
+					Float.parseFloat(messageTokens[8]),
+					Float.parseFloat(messageTokens[9]),
+					Float.parseFloat(messageTokens[10]),
+					Float.parseFloat(messageTokens[11]),
+					Float.parseFloat(messageTokens[12]),
+					Float.parseFloat(messageTokens[13]),
+					Float.parseFloat(messageTokens[14]),
+					Float.parseFloat(messageTokens[15]),
+					Float.parseFloat(messageTokens[16]),
+					Float.parseFloat(messageTokens[17]));
+
+				ghostManager.updateGhostAvatarRotation(ghostID, rotation);
+			}
+
+			if (messageTokens[0].compareTo("createNPC") == 0)
+			{
+				Vector3f ghostPosition = new Vector3f(
+					Float.parseFloat(messageTokens[1]),
+					Float.parseFloat(messageTokens[2]),
+					Float.parseFloat(messageTokens[3]));
+				try
+				{
+					createGhostNPC(ghostPosition);
+				} catch (Exception e) {
+					System.out.println("could not create ghostNPC");
+					e.printStackTrace();
+				}
+			}
+
+
+			if (messageTokens[0].compareTo("isnear") == 0)
+			{
+				Vector3f ghostPosition = new Vector3f(
+					Float.parseFloat(messageTokens[1]),
+					Float.parseFloat(messageTokens[2]),
+					Float.parseFloat(messageTokens[3]));
+			}
+
+			if (messageTokens[0].compareTo("NPCinfo") == 0)
+			{
+				Vector3f NPCPosition = new Vector3f(
+					Float.parseFloat(messageTokens[1]),
+					Float.parseFloat(messageTokens[2]),
+					Float.parseFloat(messageTokens[3]));
+				float gsize = Float.parseFloat(messageTokens[4]);
+				updateGhostNPC(NPCPosition, gsize);
+			}
+
+			if (messageTokens[0].compareTo("mNPC") == 0)
+			{
+				Vector3f ghostPosition = new Vector3f(
+					Float.parseFloat(messageTokens[2]),
+					Float.parseFloat(messageTokens[3]),
+					Float.parseFloat(messageTokens[4]));
+				createGhostNPC(ghostPosition);
+				System.out.println("npc new created");
+			}
+		}
+	}
 	
 	// The initial message from the game client requesting to join the 
 	// server. localId is a unique identifier for the client. Recommend 
@@ -129,7 +204,7 @@ public class ProtocolClient extends GameConnectionClient
 		{	e.printStackTrace();
 	}	}
 	
-	// Informs the server of the client’s Avatar’s position. The server 
+	// Informs the server of the clientï¿½s Avatarï¿½s position. The server 
 	// takes this message and forwards it to all other clients registered 
 	// with the server.
 	// Message Format: (create,localId,x,y,z) where x, y, and z represent the position
@@ -178,4 +253,74 @@ public class ProtocolClient extends GameConnectionClient
 		} catch (IOException e) 
 		{	e.printStackTrace();
 	}	}
+
+	public void sendRotationMessage(Matrix4f rotation)
+	{
+		try {
+			String message = new String("turn," + id.toString());
+			message += "," + rotation.m00();
+			message += "," + rotation.m01();
+			message += "," + rotation.m02();
+			message += "," + rotation.m03();
+			message += "," + rotation.m10();
+			message += "," + rotation.m11();
+			message += "," + rotation.m12();
+			message += "," + rotation.m13();
+			message += "," + rotation.m20();
+			message += "," + rotation.m21();
+			message += "," + rotation.m22();
+			message += "," + rotation.m23();
+			message += "," + rotation.m30();
+			message += "," + rotation.m31();
+			message += "," + rotation.m32();
+			message += "," + rotation.m33();
+			sendPacket(message);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	// ------------- GHOST NPC SECTION --------------
+	private void createGhostNPC(Vector3f position)
+	{
+		try
+		{
+			if (ghostNPC == null)
+				ghostNPC = new GhostNPC(0, game.getNPCshape(), game.getNPCtexture(), position);
+		}catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+
+	}
+	private void updateGhostNPC(Vector3f position, double gsize)
+	{
+		boolean gs;
+		if (ghostNPC == null) {
+			try {
+				createGhostNPC(position);
+			} catch (Exception e) {
+				System.out.println("error creating npc");
+			}
+		}
+		ghostNPC.setPosition(position);
+		if (gsize == 1.0) gs=false; else gs=true;
+		ghostNPC.setSize(gs);
+	}
+
+	private void startNPC()
+	{
+		if(ghostNPC == null)
+		{
+			try {
+				String message = new String("needNPC," + id.toString());
+				sendPacket(message);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	// more additions to the network protocol to handle ghosts:
+
 }

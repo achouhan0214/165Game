@@ -1,5 +1,5 @@
 package tage.input.action;
-import a2.MyGame;
+import myGame.*;
 import net.java.games.input.Event;
 import tage.*;
 import tage.input.action.AbstractInputAction;
@@ -24,11 +24,13 @@ public class TurnAction extends AbstractInputAction{
         private Matrix4f oldRotation, rotAroundDolUp, newRotation;
         private Vector4f oldUp;
         private MyGame game;
+        private ProtocolClient protClient;
         /** Gets the Game to apply the action to
          */
-        public TurnAction(MyGame game)
+        public TurnAction(MyGame game, ProtocolClient p)
         {
                 this.game = game;
+                protClient = p;
         }
 
         /** See if the input is A for turning left or
@@ -39,6 +41,7 @@ public class TurnAction extends AbstractInputAction{
         public void performAction(float time, Event e)
         {
                 String event = e.getComponent().toString();
+                float angle = 0;
                 if(event.equals("A"))
                 {
                         dol = game.getDol();
@@ -54,6 +57,13 @@ public class TurnAction extends AbstractInputAction{
                                 dol = game.getDol();
                                 dol.yaw((keyValue)*.025f);
                         }
+                }
+                if (protClient != null)
+                {
+                        Vector3f dolFacingVector = dol.getLocalForwardVector();
+                        Vector3f worldForwardVector = dol.getWorldForwardVector();
+                        angle = worldForwardVector.angle(dolFacingVector);
+                        protClient.sendRotationMessage(angle);
                 }
         }
 }

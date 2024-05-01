@@ -1,6 +1,6 @@
 package tage.input.action;
 
-import a2.MyGame;
+import myGame.MyGame;
 import net.java.games.input.Event;
 import tage.*;
 import tage.input.action.AbstractInputAction;
