@@ -1,7 +1,7 @@
 public class NPC {
         double locationX, locationY, locationZ;
         double dir = 0.1;
-        double size = 1.0;
+        double size = 0.2f;
         public NPC()
         {
                 locationX=0.0;

@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.joml.*;
 import org.joml.Matrix4f;
 
+import tage.GameObject;
 import tage.networking.client.GameConnectionClient;
 
 
@@ -170,7 +171,7 @@ public class ProtocolClient extends GameConnectionClient
 				updateGhostNPC(NPCPosition, gsize);
 			}
 
-			if (messageTokens[0].compareTo("mNPC") == 0)
+			/*if (messageTokens[0].compareTo("mNPC") == 0)
 			{
 				Vector3f ghostPosition = new Vector3f(
 					Float.parseFloat(messageTokens[2]),
@@ -178,7 +179,7 @@ public class ProtocolClient extends GameConnectionClient
 					Float.parseFloat(messageTokens[4]));
 				createGhostNPC(ghostPosition);
 				System.out.println("npc new created");
-			}
+			}*/
 		}
 	}
 	
@@ -286,7 +287,24 @@ public class ProtocolClient extends GameConnectionClient
 		try
 		{
 			if (ghostNPC == null)
+			{
 				ghostNPC = new GhostNPC(0, game.getNPCshape(), game.getNPCtexture(), position);
+				Matrix4f initialTranslation = (new Matrix4f()).translation(-1f, 0f, 1f);
+				ghostNPC.setLocalTranslation(initialTranslation);
+				ghostNPC.getRenderStates().setModelOrientationCorrection(
+					(new Matrix4f()).rotationY((float) java.lang.Math.toRadians(90.0f)));
+				Matrix4f initialRotation = (new Matrix4f()).rotationY((float) java.lang.Math.toRadians(135.0f));
+				ghostNPC.setLocalRotation(initialRotation);
+				Matrix4f initialScale = (new Matrix4f()).scaling(0.2f);
+				ghostNPC.setLocalScale(initialScale);
+
+				Vector3f loc = ghostNPC.getWorldLocation();
+				GameObject terr = game.getTerr();
+				float height = terr.getHeight(loc.x(), loc.z());
+				ghostNPC.setLocalLocation(new Vector3f(loc.x(), height + 0.75f, loc.z()));
+			}
+
+
 		}catch (Exception e)
 		{
 			e.printStackTrace();
@@ -303,23 +321,15 @@ public class ProtocolClient extends GameConnectionClient
 				System.out.println("error creating npc");
 			}
 		}
+		Vector3f tempPos = position;
+		GameObject terr = game.getTerr();
+		float height = terr.getHeight(tempPos.x(), tempPos.z());
+		position.add(tempPos.x(), height + 0.75f, tempPos.z());
 		ghostNPC.setPosition(position);
-		if (gsize == 1.0) gs=false; else gs=true;
+		if (gsize == 0.2f) gs=false; else gs=true;
 		ghostNPC.setSize(gs);
 	}
 
-	private void startNPC()
-	{
-		if(ghostNPC == null)
-		{
-			try {
-				String message = new String("needNPC," + id.toString());
-				sendPacket(message);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
 
 	// more additions to the network protocol to handle ghosts:
 
