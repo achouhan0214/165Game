@@ -388,7 +388,7 @@ public class MyGame extends VariableFrameRateGame {
 			gernade.setPhysicsObject(gernadeP);
 		}
 
-		if( throwGernade)
+		if(throwGernade)
 		{
 			float capVel[] = gernadeP.getLinearVelocity();
 
@@ -414,6 +414,9 @@ public class MyGame extends VariableFrameRateGame {
 						{
 							engine.getSceneGraph().removePhysicsObject(explosionP);
 							engine.getSceneGraph().removeGameObject(gernade);
+							gernadeP = null;
+							explosionP = null;
+							gernade = null;
 						}
 					}, 3000);
 				throwGernade = false;
@@ -586,5 +589,10 @@ public class MyGame extends VariableFrameRateGame {
 				}
 			}
 		}
+	}
+
+	public GameObject getTerr()
+	{
+		return terr;
 	}
 }

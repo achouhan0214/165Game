@@ -64,6 +64,18 @@ public class GameAIServerUDP extends GameConnectionServer<UUID> {
                 String message = (String) o;
                 String[] messageTokens = message.split(",");
 
+                if (messageTokens[0].compareTo("join") == 0) {
+                        try {
+                                IClientInfo ci;
+                                ci = getServerSocket().createClientInfo(senderIP, port);
+                                UUID clientID = UUID.fromString(messageTokens[1]);
+                                addClient(ci, clientID);
+                                System.out.println("Join request received from - " + clientID.toString());
+                                sendJoinedMessage(clientID, true);
+                        } catch (IOException e) {
+                                e.printStackTrace();
+                        }
+                }
                 // Case where server receives request for NPCs
                 // Received Message Format: (needNPC,id)
                 if(messageTokens[0].compareTo("needNPC") == 0)
@@ -102,6 +114,23 @@ public class GameAIServerUDP extends GameConnectionServer<UUID> {
                         message += "," + position[2];
                         forwardPacketToAll(message, clientID);
                 } catch (IOException e) {
+                        e.printStackTrace();
+                }
+        }
+
+        public void sendJoinedMessage(UUID clientID, boolean success)
+        {
+                try
+                {	System.out.println("trying to confirm join");
+                        String message = new String("join,");
+                        if(success)
+                                message += "success";
+                        else
+                                message += "failure";
+                        sendPacket(message, clientID);
+                }
+                catch (IOException e)
+                {
                         e.printStackTrace();
                 }
         }
