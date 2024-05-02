@@ -136,20 +136,20 @@ public class MyGame extends VariableFrameRateGame {
 	{ AudioResource resource1, resource2, resource3;
 		audioMgr = engine.getAudioManager();
 		resource1 = audioMgr.createAudioResource("assets/sounds/explode.wav", AudioResourceType.AUDIO_SAMPLE);
-		resource2 = audioMgr.createAudioResource("assets/sounds/desert.wav", AudioResourceType.AUDIO_SAMPLE);
+		//resource2 = audioMgr.createAudioResource("assets/sounds/desert.wav", AudioResourceType.AUDIO_SAMPLE);
 		resource3 = audioMgr.createAudioResource("assets/sounds/bounce.wav", AudioResourceType.AUDIO_SAMPLE);
 		explosion = new Sound(resource1, SoundType.SOUND_EFFECT, 100, false);
-		desertSound = new Sound(resource2, SoundType.SOUND_EFFECT, 100, true);
+		//desertSound = new Sound(resource2, SoundType.SOUND_EFFECT, 100, true);
 		bounce = new Sound(resource3, SoundType.SOUND_EFFECT, 100, false);
 		explosion.initialize(audioMgr);
-		desertSound.initialize(audioMgr);
+		//desertSound.initialize(audioMgr);
 		bounce.initialize(audioMgr);
 		explosion.setMaxDistance(10.0f);
 		explosion.setMinDistance(0.5f);
-		explosion.setRollOff(5.0f);
-		desertSound.setMaxDistance(10.0f);
-		desertSound.setMinDistance(0.5f);
-		desertSound.setRollOff(5.0f);
+		explosion.setRollOff(0.2f);
+		//desertSound.setMaxDistance(10.0f);
+		//desertSound.setMinDistance(0.5f);
+		//desertSound.setRollOff(5.0f);
 
 		bounce.setMaxDistance(10.0f);
 		bounce.setMinDistance(0.5f);
@@ -318,9 +318,9 @@ public class MyGame extends VariableFrameRateGame {
 		engine.enablePhysicsWorldRender();
 
 		// initial sound settings
-		desertSound.setLocation(avatar.getWorldLocation());
-		setEarParameters();
-		desertSound.play();
+		//desertSound.setLocation(avatar.getWorldLocation());
+		//setEarParameters();
+		//desertSound.play();
 
 
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
@@ -339,8 +339,8 @@ public class MyGame extends VariableFrameRateGame {
 		Camera c = (engine.getRenderSystem()).getViewport("MAIN").getCamera();
 
 		// update sound
-		desertSound.setLocation(avatar.getWorldLocation());
-		setEarParameters();
+		//desertSound.setLocation(avatar.getWorldLocation());
+		//setEarParameters();
 
 
 		// build and set HUD
@@ -429,8 +429,7 @@ public class MyGame extends VariableFrameRateGame {
 		if(throwGernade)
 		{
 			float capVel[] = gernadeP.getLinearVelocity();
-			System.out.println(gernade.getLocalLocation().y());
-			if(gernade.getLocalLocation().y() < 0.13)
+			if(gernade.getLocalLocation().y() < 0.16 & gernade.getLocalLocation().y() > 0.12)
 			{
 				bounce.setLocation(gernade.getWorldLocation());
 				setEarParameters();
