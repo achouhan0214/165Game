@@ -324,10 +324,10 @@ public class ProtocolClient extends GameConnectionClient
 		Vector3f tempPos = position;
 		GameObject terr = game.getTerr();
 		float height = terr.getHeight(tempPos.x(), tempPos.z());
-		position.add(tempPos.x(), height + 0.75f, tempPos.z());
+		position.add(0, height + 0.75f, 0);
 		ghostNPC.setPosition(position);
-		if (gsize == 0.2f) gs=false; else gs=true;
-		ghostNPC.setSize(gs);
+		//if (gsize == 0.02f) gs=false; else gs=true;
+		//ghostNPC.setSize(gs);
 	}
 
 

@@ -314,8 +314,8 @@ public class MyGame extends VariableFrameRateGame {
 		planeP = (engine.getSceneGraph()).addPhysicsStaticPlane(tempTransform, up, 0.0f);
 		planeP.setBounciness(0.5f);
 		terr.setPhysicsObject(planeP);
-		engine.enableGraphicsWorldRender();
-		engine.enablePhysicsWorldRender();
+		//engine.enableGraphicsWorldRender();
+		//engine.enablePhysicsWorldRender();
 
 		// initial sound settings
 		//desertSound.setLocation(avatar.getWorldLocation());
