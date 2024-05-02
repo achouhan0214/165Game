@@ -1,6 +1,7 @@
 package myGame;
 
 import tage.*;
+import tage.audio.*;
 import tage.physics.PhysicsEngine;
 import tage.physics.PhysicsObject;
 import tage.shapes.*;
@@ -73,6 +74,9 @@ public class MyGame extends VariableFrameRateGame {
 	private boolean throwGernade = false;
 	private Timer timer;
 
+	private IAudioManager audioMgr;
+	private Sound explosion, desertSound, bounce;
+
 	public MyGame(String serverAddress, int serverPort, String protocol) {
 		super();
 		gm = new GhostManager(this);
@@ -125,6 +129,31 @@ public class MyGame extends VariableFrameRateGame {
 
 		npcTex = new TextureImage("dirt.png");
 
+	}
+
+	@Override
+	public void loadSounds()
+	{ AudioResource resource1, resource2, resource3;
+		audioMgr = engine.getAudioManager();
+		resource1 = audioMgr.createAudioResource("assets/sounds/explode.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource2 = audioMgr.createAudioResource("assets/sounds/desert.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource3 = audioMgr.createAudioResource("assets/sounds/bounce.wav", AudioResourceType.AUDIO_SAMPLE);
+		explosion = new Sound(resource1, SoundType.SOUND_EFFECT, 100, false);
+		desertSound = new Sound(resource2, SoundType.SOUND_EFFECT, 100, true);
+		bounce = new Sound(resource3, SoundType.SOUND_EFFECT, 100, false);
+		explosion.initialize(audioMgr);
+		desertSound.initialize(audioMgr);
+		bounce.initialize(audioMgr);
+		explosion.setMaxDistance(10.0f);
+		explosion.setMinDistance(0.5f);
+		explosion.setRollOff(5.0f);
+		desertSound.setMaxDistance(10.0f);
+		desertSound.setMinDistance(0.5f);
+		desertSound.setRollOff(5.0f);
+
+		bounce.setMaxDistance(10.0f);
+		bounce.setMinDistance(0.5f);
+		bounce.setRollOff(5.0f);
 	}
 
 	@Override
@@ -288,6 +317,11 @@ public class MyGame extends VariableFrameRateGame {
 		engine.enableGraphicsWorldRender();
 		engine.enablePhysicsWorldRender();
 
+		// initial sound settings
+		desertSound.setLocation(avatar.getWorldLocation());
+		setEarParameters();
+		desertSound.play();
+
 
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
 		(engine.getSceneGraph()).setSkyBoxEnabled(true);
@@ -303,6 +337,10 @@ public class MyGame extends VariableFrameRateGame {
 		prevTime = System.currentTimeMillis();
 		amt = elapsedTime * 0.03;
 		Camera c = (engine.getRenderSystem()).getViewport("MAIN").getCamera();
+
+		// update sound
+		desertSound.setLocation(avatar.getWorldLocation());
+		setEarParameters();
 
 
 		// build and set HUD
@@ -391,7 +429,13 @@ public class MyGame extends VariableFrameRateGame {
 		if(throwGernade)
 		{
 			float capVel[] = gernadeP.getLinearVelocity();
-
+			System.out.println(gernade.getLocalLocation().y());
+			if(gernade.getLocalLocation().y() < 0.13)
+			{
+				bounce.setLocation(gernade.getWorldLocation());
+				setEarParameters();
+				bounce.play();
+			}
 			if(Math.sqrt(Math.pow(capVel[0], 2) +  Math.pow(capVel[2], 2)) < 1.25f)
 			{
 				float mass = 1.0f;
@@ -403,7 +447,11 @@ public class MyGame extends VariableFrameRateGame {
 				//caps1P = (engine.getSceneGraph()).addPhysicsBox(mass, tempTransform, size);
 				explosionP.setBounciness(0f);
 				explosionP.setFriction(30f);
+				bounce.stop();
 				gernade.setPhysicsObject(explosionP);
+				explosion.setLocation(gernade.getWorldLocation());
+				setEarParameters();
+				explosion.play();
 				engine.getSceneGraph().removePhysicsObject(gernadeP);
 				timer = new Timer();
 				timer.schedule(
@@ -589,6 +637,12 @@ public class MyGame extends VariableFrameRateGame {
 				}
 			}
 		}
+	}
+
+	public void setEarParameters()
+	{ Camera camera = (engine.getRenderSystem()).getViewport("MAIN").getCamera();
+		audioMgr.getEar().setLocation(avatar.getWorldLocation());
+		audioMgr.getEar().setOrientation(camera.getN(), new Vector3f(0.0f, 1.0f, 0.0f));
 	}
 
 	public GameObject getTerr()
