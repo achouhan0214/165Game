@@ -1090,4 +1090,9 @@ public final class Matrix4f implements Matrix4 {
         // inverse(M) = 1/determinant(M) * adjugate(M)
         return adj.mult(1.0f / det);
     }
+
+    public String m00() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'm00'");
+    }
 }

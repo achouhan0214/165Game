@@ -7,9 +7,6 @@ import tage.physics.PhysicsObject;
 import tage.shapes.*;
 import tage.input.*;
 import tage.input.action.*;
-import tage.input.action.FwdAction;
-import tage.input.action.PitchAction;
-import tage.input.action.TurnAction;
 
 import java.lang.Math;
 import java.awt.*;
@@ -19,7 +16,6 @@ import java.awt.event.*;
 import java.io.*;
 import java.util.*;
 import java.util.Random;
-import java.util.UUID;
 import java.net.InetAddress;
 
 import java.net.UnknownHostException;
@@ -42,13 +38,14 @@ public class MyGame extends VariableFrameRateGame {
 	private GhostManager gm;
 
 	private int counter = 0;
-	private Matrix4f initialScale;
+	private Vector3f currentPosition, WorldRightVector, WorldUpVector, NewN, FinalFwd, FinalUp, Y_AXIS, X_AXIS;
+	private Matrix4f initialTranslation, initialRotation, initialScale, initialTranslationWep, initialRotationWep, initialScaleWep;
 	private double startTime, prevTime, elapsedTime, amt;
 
-	private GameObject avatar, x, y, z, terr, weopon, gernade, bullet, enemyBullet, enemyGarnade;
-	private ObjShape ghostS, avaS, linxS, linyS, linzS, terrS, dolS, wepS, gernadeS;
-	private TextureImage avaT, ghostT, hills, grass, dolT, wepT, gernadeT;
-	private AnimatedShape robS;
+	private GameObject avatar, x, y, z, terr, weopon, gernade, bullet, enemyBullet, enemyGarnade, aimsphere, smallaimsphere, locaimsphere;;
+	private ObjShape ghostS, avaS, linxS, linyS, linzS, terrS, dolS, wepS, gernadeS, aimsphereS;
+	private TextureImage avaT, ghostT, hills, grass, dolT, wepT, gernadeT,glockT;
+	private AnimatedShape robS, glockS;
 	private ObjShape npcShape;
 	private TextureImage npcTex;
 
@@ -64,6 +61,11 @@ public class MyGame extends VariableFrameRateGame {
 
 	private CameraOrbit3D cameraOrbit3D;
 
+	private Robot robot; // these are additional variable declarations
+	private float curMouseX, curMouseY, centerX, centerY;
+	private float prevMouseX, prevMouseY; // loc of mouse prior to move
+	private boolean isRecentering; //indicates the Robot is in action	
+
 
 	private String serverAddress;
 	private int serverPort;
@@ -76,7 +78,7 @@ public class MyGame extends VariableFrameRateGame {
 	private Timer timer;
 
 	private IAudioManager audioMgr;
-	private Sound explosion, desertSound, bounce;
+	private Sound explosion, desertSound, bounce, shootSound;
 
 
 	private String avatarShape, avatarTexture;
@@ -129,10 +131,13 @@ public class MyGame extends VariableFrameRateGame {
 		robS = new AnimatedShape("robot.rkm", "robot.rks");
 		robS.loadAnimation("WAVE", "robotWave.rka");
 		robS.loadAnimation("WALK", "robotWalk.rka");
+		glockS = new AnimatedShape("glock2.rkm", "glock2.rks");
+		glockS.loadAnimation("SHOOT", "glock2.rka");
 
 		npcShape = new ImportedModel("human1.2.obj");
 
 		gernadeS = new Sphere();
+		aimsphereS = new Sphere();
 
 
 		terrS = new TerrainPlane(1000);
@@ -155,25 +160,32 @@ public class MyGame extends VariableFrameRateGame {
 		gernadeT = new TextureImage("dirt.png");
 
 		npcTex = new TextureImage("dirt.png");
-
+		glockT = new TextureImage("weopon.jpg");
 	}
 
 	@Override
 	public void loadSounds()
-	{ AudioResource resource1, resource2, resource3;
+	{ AudioResource resource1, resource2, resource3, resource4;
 		audioMgr = engine.getAudioManager();
 		resource1 = audioMgr.createAudioResource("assets/sounds/explode.wav", AudioResourceType.AUDIO_SAMPLE);
 		//resource2 = audioMgr.createAudioResource("assets/sounds/desert.wav", AudioResourceType.AUDIO_SAMPLE);
 		resource3 = audioMgr.createAudioResource("assets/sounds/bounce.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource4 = audioMgr.createAudioResource("assets/sounds/shoot.wav", AudioResourceType.AUDIO_SAMPLE);
 		explosion = new Sound(resource1, SoundType.SOUND_EFFECT, 100, false);
 		//desertSound = new Sound(resource2, SoundType.SOUND_EFFECT, 100, true);
 		bounce = new Sound(resource3, SoundType.SOUND_EFFECT, 100, false);
+		shootSound = new Sound(resource4, SoundType.SOUND_EFFECT, 100, false);
 		explosion.initialize(audioMgr);
+		shootSound.initialize(audioMgr);
 		//desertSound.initialize(audioMgr);
 		bounce.initialize(audioMgr);
 		explosion.setMaxDistance(10.0f);
 		explosion.setMinDistance(0.5f);
 		explosion.setRollOff(0.2f);
+
+		shootSound.setMaxDistance(5.0f);
+		shootSound.setMinDistance(0.5f);
+		shootSound.setRollOff(0.2f);
 
 		bounce.setMaxDistance(10.0f);
 		bounce.setMinDistance(0.5f);
@@ -182,14 +194,15 @@ public class MyGame extends VariableFrameRateGame {
 
 	@Override
 	public void buildObjects() {
-		Matrix4f initialTranslation, initialRotation, initialScale, initialTranslationWep, initialRotationWep, initialScaleWep;
+		Matrix4f initialTranslation, initialRotation, initialScale, initialTranslationWep, initialRotationWep, initialScaleWep,initialScaleAim,
+		initialTranslationSmallAim, initialTranslationAim, initialScaleSmallAim;
 
 		// build avatar
 		avatarShape = avaShapePath;
 		avatarTexture = avaTexturePath;
 
 		avatar = new GameObject(GameObject.root(), avaS, avaT);
-		initialTranslation = (new Matrix4f()).translation(-1f, 1f, 1f);
+		initialTranslation = (new Matrix4f()).translation(-1f, 1f, 1f); 
 		avatar.setLocalTranslation(initialTranslation);
 		avatar.getRenderStates().setModelOrientationCorrection(
 			(new Matrix4f()).rotationY((float) java.lang.Math.toRadians(90.0f)));
@@ -198,19 +211,65 @@ public class MyGame extends VariableFrameRateGame {
 		initialScale = (new Matrix4f()).scaling(0.2f);
 		avatar.setLocalScale(initialScale);
 		characterSelect("human");
+		avatar.getRenderStates().hasLighting(true);
+		//avatar.getRenderStates().isEnvironmentMapped(true);
+
+		//build aimsphere
+		aimsphere = new GameObject(GameObject.root(),aimsphereS, glockT);
+		initialScaleAim = (new Matrix4f()).scaling(5f);
+		aimsphere.setLocalScale(initialScaleAim);
+		aimsphere.setParent(avatar);
+
+		initialTranslationAim = (new Matrix4f()).translation(0f,0.5f, 0f);
+		aimsphere.setLocalTranslation(initialTranslationAim);
+		
+		aimsphere.getRenderStates().setWireframe(true);
+	    aimsphere.applyParentRotationToPosition(true);
+		aimsphere.getRenderStates().disableRendering();
 
 		//build avatar weopon
-		weopon = new GameObject(GameObject.root(), wepS, wepT);
+		weopon = new GameObject(GameObject.root(), glockS, glockT);
 		initialTranslationWep = (new Matrix4f()).translation(-0.35f, 0.1f, 0.6f);
 		weopon.getRenderStates().setModelOrientationCorrection(
-			(new Matrix4f()).rotationY((float) java.lang.Math.toRadians(90.0f)));
+		(new Matrix4f()).rotationY((float) java.lang.Math.toRadians(270.0f)));
 		initialRotationWep = (new Matrix4f()).rotationY((float) java.lang.Math.toRadians(135.0f));
-		initialScaleWep = (new Matrix4f()).scaling(0.2f);
+		initialScaleWep = (new Matrix4f()).scaling(0.4f);
 		weopon.setParent(avatar);
 		weopon.applyParentRotationToPosition(true);
 		weopon.setLocalScale(initialScaleWep);
 		weopon.setLocalTranslation(initialTranslationWep);
+		weopon.getRenderStates().hasLighting(true);
+		
+		
 
+		//build smallaimsphere
+		smallaimsphere = new GameObject(GameObject.root(),aimsphereS,glockT);
+		initialScaleSmallAim = (new Matrix4f()).scaling(0.1f);
+		smallaimsphere.setLocalScale(initialScaleSmallAim);
+		initialTranslationSmallAim = (new Matrix4f()).translation(0f,0f, 10f);
+		smallaimsphere.setLocalTranslation(initialTranslationSmallAim);
+		smallaimsphere.setParent(aimsphere);
+		smallaimsphere.applyParentRotationToPosition(true);
+		smallaimsphere.getRenderStates().disableRendering();
+		//smallaimsphere.propagateRotation(true);
+		
+		locaimsphere =	new GameObject(GameObject.root(),aimsphereS,glockT);
+		locaimsphere.setLocalScale(initialScaleAim);
+		locaimsphere.setParent(aimsphere);
+		
+
+
+
+		//build terrain
+		
+		// build torus along X axis
+		//dol1 = new GameObject(GameObject.root(), dolS, dolT);
+		//initialTranslation = (new Matrix4f()).translation(1, 0, 0);
+		//dol1.setLocalTranslation(initialTranslation);
+		//initialScale = (new Matrix4f()).scaling(0.25f);
+		//dol1.setLocalScale(initialScale);
+
+		// add X,Y,-Z axes
 		x = new GameObject(GameObject.root(), linxS);
 		y = new GameObject(GameObject.root(), linyS);
 		z = new GameObject(GameObject.root(), linzS);
@@ -253,6 +312,7 @@ public class MyGame extends VariableFrameRateGame {
 
 		// ----------------- initialize camera ----------------
 		positionCameraBehindAvatar();
+		//initMouseMode();
 
 		// ----------------- INPUTS SECTION -----------------------------
 		setupNetworking();
@@ -310,6 +370,25 @@ public class MyGame extends VariableFrameRateGame {
 			net.java.games.input.Component.Identifier.Axis.X,
 			turnAction, InputManager
 				.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+			im.associateActionWithAllGamepads(
+			net.java.games.input.Component.Identifier.Button.LEFT,
+			turnAction, InputManager
+				.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+				im.associateActionWithAllGamepads(
+			net.java.games.input.Component.Identifier.Button.RIGHT,
+			turnAction, InputManager
+				.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+				im.associateActionWithAllGamepads(
+			net.java.games.input.Component.Identifier.Button._1,
+			shoot, InputManager
+				.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+
+				im.associateActionWithAllGamepads(
+			net.java.games.input.Component.Identifier.Button._2,
+			throwingGernade, InputManager
+				.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+
+				
 
 
 		// --- initialize physics system ---
@@ -320,7 +399,6 @@ public class MyGame extends VariableFrameRateGame {
 		float mass = 1.0f;
 		float up[] = {0, 1, 0};
 		float radius = 0.75f;
-
 		float height = 0.0f;
 		double[] tempTransform;
 		Matrix4f translation = new Matrix4f();
@@ -418,8 +496,9 @@ public class MyGame extends VariableFrameRateGame {
 
 		// update inputs and camera
 		im.update((float) elapsedTime);
-		//cameraOrbit3D.updateCameraPosition();
+		cameraOrbit3D.updateCameraPosition();
 		positionCameraBehindAvatar();
+		//initMouseMode();
 		processNetworking((float) elapsedTime);
 
 		if(avatar != null)
@@ -427,10 +506,11 @@ public class MyGame extends VariableFrameRateGame {
 			Vector3f loc = avatar.getWorldLocation();
 			float height = terr.getHeight(loc.x(), loc.z());
 			robS.updateAnimation();
+			glockS.updateAnimation();
 			avatar.setLocalLocation(new Vector3f(loc.x(), height + 0.75f, loc.z()));
 		}
 
-
+		
 		double totalTime = System.currentTimeMillis() - startTime;
 		elapsedTime = System.currentTimeMillis() - prevTime;
 		prevTime = System.currentTimeMillis();
@@ -904,11 +984,24 @@ public class MyGame extends VariableFrameRateGame {
 		position.add(v.x() * .75f, v.y() * .75f, v.z() * .75f);
 		Camera c = (engine.getRenderSystem()).getViewport("MAIN").getCamera();
 		c.setLocation(position);
-		c.setU(new Vector3f(u.x(), u.y(), u.z()));
-		c.setV(new Vector3f(v.x(), v.y(), v.z()));
-		c.setN(new Vector3f(n.x(), n.y(), n.z()));
+		//c.setU(new Vector3f(u.x(), u.y(), u.z()));
+		//c.setV(new Vector3f(v.x(), v.y(), v.z()));
+		//c.setN(new Vector3f(n.x(), n.y(), n.z()));
 	}
 
+	@Override
+    public void mouseClicked(MouseEvent e) {
+        if (e.getButton() == MouseEvent.BUTTON1) {
+            glockS.stopAnimation();
+				glockS.playAnimation("SHOOT", 1f,
+			AnimatedShape.EndType.STOP, 0);
+			shootSound.setLocation(avatar.getWorldLocation());
+			setEarParameters();
+			shootSound.play();
+			shoot();
+            
+        }
+    }
 	@Override
 	public void keyPressed(KeyEvent e) {
 		switch (e.getKeyCode()) {
@@ -921,6 +1014,7 @@ public class MyGame extends VariableFrameRateGame {
 				break;
 			}
 
+			
 			case KeyEvent.VK_O: {
 				this.changeChar();
 				break;
@@ -970,6 +1064,206 @@ public class MyGame extends VariableFrameRateGame {
 		}
 	}
 
+	private void initMouseMode()
+	{ RenderSystem rs = engine.getRenderSystem();
+	Viewport vw = rs.getViewport("MAIN");
+	float left = vw.getActualLeft();
+	float bottom = vw.getActualBottom();
+	float width = vw.getActualWidth();
+	float height = vw.getActualHeight();
+	centerX = (int) (left + width/2);
+	centerY = (int) (bottom - height/2);
+	isRecentering = false;
+	try // note that some platforms may not support the Robot class
+	{ robot = new Robot(); } catch (AWTException ex)
+	{ throw new RuntimeException("Couldn't create Robot!"); }
+	recenterMouse();
+	prevMouseX = centerX; // 'prevMouse' defines the initial
+	prevMouseY = centerY; // mouse position
+	 //also change the cursor
+	Cursor crosshair = Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR);
+	rs.getGLCanvas().setCursor(crosshair);
+
+	}
+
+	private void recenterMouse()
+	{ // use the robot to move the mouse to the center point.
+	// Note that this generates one MouseEvent.
+	RenderSystem rs = engine.getRenderSystem();
+	Viewport vw = rs.getViewport("MAIN");
+	float left = vw.getActualLeft();
+	float bottom = vw.getActualBottom();
+	float width = vw.getActualWidth();
+	float height = vw.getActualHeight();
+	double centerX = (double) (left + width/2.0f);
+	double centerY = (double) (bottom - height/2.0f);
+	isRecentering = true;
+	robot.mouseMove((int)centerX, (int)centerY);
+	}
+	public void initRoll() {
+	Camera c = engine.getRenderSystem()
+	.getViewport("MAIN").getCamera();
+	WorldUpVector = c.getV();
+	WorldRightVector = c.getU();
+	}
+
+	public void yaw(float mouseDeltaX)
+	{ float tilt;
+		Camera c = engine.getRenderSystem()
+		.getViewport("MAIN").getCamera();
+		Vector3f rightVector = c.getU();
+		Vector3f upVector = c.getV();
+		Vector3f fwdVector = c.getN();
+		if (mouseDeltaX < 0.0) tilt = -1.0f;
+		else if (mouseDeltaX > 0.0) tilt = 1.0f;
+		else tilt = 0.0f;
+		rightVector.rotateAxis(0.01f*tilt, upVector.x(),
+		upVector.y(), upVector.z());
+		fwdVector.rotateAxis(0.01f*tilt, upVector.x(),
+		upVector.y(), upVector.z());
+		c.setU(rightVector);
+		c.setN(fwdVector);
+	}
+
+	public void pitch(float mouseDeltaY) {
+		float tilt;
+		Camera c = engine.getRenderSystem().getViewport("MAIN").getCamera();
+		X_AXIS = new Vector3f().add(1,0,0);
+		Vector3f rightVector = c.getU();
+		Vector3f upVector = c.getV();
+		Vector3f fwdVector = c.getN();
+		
+		if (mouseDeltaY < 0.0) {
+			tilt = -1.0f;
+		} else if (mouseDeltaY > 0.0) {
+			tilt = 1.0f;
+		} else {
+			tilt = 0.0f;
+		}
+		//avatar.pitch(0.01f*tilt);
+		//Quaternionf pitchRotation = new Quaternionf().rotateAxis(0.01f*tilt, rightVector);
+    	//pitchRotation.transform(upVector);
+    	//pitchRotation.transform(fwdVector);
+
+		
+		
+		//c.lookAt(fwdVector);
+		//QuatFwd = new Quaternionf().fromAxisAngleDeg(fwdVector, 0.01f*tilt);
+		//QuatUp = new Quaternionf().fromAxisAngleDeg(upVector, 0.01f*tilt);
+
+		//QuatFwd.getEulerAnglesXYZ(fwdVector);
+		//QuatUp.getEulerAnglesXYZ(upVector);
+		upVector.rotateAxis(0.01f*tilt, rightVector.x(),
+		rightVector.y(), rightVector.z());
+		fwdVector.rotateAxis(0.01f*tilt, rightVector.x(),
+		rightVector.y(), rightVector.z());
+
+		c.setV(upVector);
+		c.setN(fwdVector);
+		
+		//Vector3f Roll = upVector.orthogonalize(rightVector);
+		//c.setV(Roll);
+		//NewN = rightVector.cross(upVector);
+		//c.setN(NewN);
+		//c.setU(WorldRightVector);
+			
+	}
+
+	// Function to check if a vector is horizontal
+    public static boolean isHorizontal(Vector3f vector) {
+        // Assuming "horizontal" means having a small y-component and large x- and z-components
+        // You can adjust the threshold values according to your needs
+        float threshold = 0.1f;
+        return Math.abs(vector.y) < threshold; // Assuming y-component is up direction
+    }
+
+	public void pitchyaw(float mouseDeltaX, float mouseDeltaY)
+	{	Matrix4f leftRotation, rightRotation, upRotation, downRotation;
+		float tiltX;
+		float tiltY;
+		Camera c = engine.getRenderSystem()
+		.getViewport("MAIN").getCamera();
+		Vector3f rightVector = c.getU();
+		Vector3f upVector = c.getV();
+		Vector3f fwdVector = c.getN();
+		
+
+		if (mouseDeltaX < 0.0) {
+		tiltX = 0.1f;
+		}
+		else if (mouseDeltaX > 0.0) {
+		 tiltX = -0.1f;
+		}
+		else {tiltX = 0.0f;
+
+		}
+		//MouseDeltaY
+		if (mouseDeltaY < 0.0) {
+			tiltY = -0.1f;
+			
+		} else if (mouseDeltaY > 0.0) {
+			tiltY = 0.1f;
+		} else {
+			tiltY = 0.0f;
+		}
+
+	Vector3f cameraForward = c.getN();
+        
+
+	Vector3f worldUp = new Vector3f(0,1,0);
+	Vector3f worldDown = new Vector3f(0,-1,0);
+
+
+
+	float angleUp = cameraForward.angle(worldUp);
+	float angleDown = cameraForward.angle(worldUp);
+	
+	// Convert the angle from radians to degrees
+	float angleDegreesUp = (float) Math.toDegrees(angleUp);
+	float angleDegreesDown = (float) Math.toDegrees(angleDown);
+	
+
+	if (avatar != null) {
+		if (angleDegreesDown < 130)	{
+			if (tiltX != 0) {
+				avatar.yaw(tiltX); }
+				if (tiltY != 0) {
+					avatar.pitch(tiltY); }
+				c.lookAt(smallaimsphere);
+
+		}
+		if (angleDegreesUp > 30)	
+		{
+			if (tiltX != 0) {
+				avatar.yaw(tiltX); }
+				if (tiltY != 0) {
+					avatar.pitch(tiltY); }
+				c.lookAt(smallaimsphere);
+
+		}
+		if (angleDegreesUp <= 30) {
+			avatar.pitch(-.2f);
+			c.lookAt(smallaimsphere);
+
+
+		}
+		 if (angleDegreesUp >= 130) {
+			avatar.pitch(.2f);
+			c.lookAt(smallaimsphere);
+
+
+		}
+	}
+		
+		/* 
+	if (tiltX != 0) {
+		avatar.yaw(tiltX); }
+		if (tiltY != 0) {
+			avatar.pitch(tiltY); }
+		c.lookAt(smallaimsphere);
+		*/
+	}
+	
 	protected void processNetworking(float elapsTime) {        // Process packets received by the client from the server
 		if (protClient != null)
 			protClient.processPackets();
@@ -1129,6 +1423,34 @@ public class MyGame extends VariableFrameRateGame {
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
 		(engine.getSceneGraph()).setSkyBoxEnabled(true);
 	}
+/* 
+	@Override
+	public void mouseMoved(MouseEvent e)
+	{ // if robot is recentering and the MouseEvent location is in the center,
+	// then this event was generated by the robot
+	if (isRecentering &&
+	centerX == e.getXOnScreen() && centerY == e.getYOnScreen())
+	{ // mouse recentered, recentering complete
+	isRecentering = false;
+	}
+	else
+	{ // event was due to a user mouse-move, and must be processed
+	curMouseX = e.getXOnScreen();
+	curMouseY = e.getYOnScreen();
+	float mouseDeltaX = prevMouseX - curMouseX;
+	float mouseDeltaY = prevMouseY - curMouseY;
+	//yaw(mouseDeltaX);
+	//pitch(mouseDeltaY);
+	pitchyaw(mouseDeltaX, mouseDeltaY);
+	prevMouseX = curMouseX;
+	prevMouseY = curMouseY;
+	// tell robot to put the cursor to the center (since user just moved it)
+	recenterMouse();
+	prevMouseX = centerX; // reset prev to center
+	prevMouseY = centerY;
+	}
+	}
+*/
 
 
 	public GameObject getDol() {
