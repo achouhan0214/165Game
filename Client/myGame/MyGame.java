@@ -1,5 +1,8 @@
 package myGame;
 
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.Random;
 import tage.*;
 import tage.audio.*;
 import tage.physics.PhysicsEngine;
@@ -7,9 +10,6 @@ import tage.physics.PhysicsObject;
 import tage.shapes.*;
 import tage.input.*;
 import tage.input.action.*;
-import tage.input.action.FwdAction;
-import tage.input.action.PitchAction;
-import tage.input.action.TurnAction;
 
 import java.lang.Math;
 import java.awt.*;
@@ -18,7 +18,9 @@ import java.awt.event.*;
 
 import java.io.*;
 import java.util.*;
-import java.util.UUID;
+
+import javax.swing.ImageIcon;
+
 import java.net.InetAddress;
 
 import java.net.UnknownHostException;
@@ -28,12 +30,13 @@ import org.joml.*;
 import net.java.games.input.*;
 import net.java.games.input.Component.Identifier.*;
 import tage.networking.IGameConnection.ProtocolType;
-
+import tage.nodeControllers.RotationController;
 import tage.physics.PhysicsEngine;
 import tage.physics.PhysicsObject;
 import tage.physics.JBullet.*;
 import com.bulletphysics.dynamics.RigidBody;
 import com.bulletphysics.collision.dispatch.CollisionObject;
+import com.bulletphysics.collision.shapes.BvhTriangleMeshShape;
 
 public class MyGame extends VariableFrameRateGame {
 	private static Engine engine;
@@ -41,21 +44,23 @@ public class MyGame extends VariableFrameRateGame {
 	private GhostManager gm;
 
 	private int counter = 0;
-	private Vector3f currentPosition;
+	private Vector3f currentPosition, WorldRightVector, WorldUpVector, NewN, FinalFwd, FinalUp, Y_AXIS, X_AXIS;
 	private Matrix4f initialTranslation, initialRotation, initialScale, initialTranslationWep, initialRotationWep, initialScaleWep;
 	private double startTime, prevTime, elapsedTime, amt;
 
-	private GameObject tor, avatar, x, y, z, terr, weopon, dol1, dol2, plane, gernade;
-	private ObjShape torS, ghostS, avaS, linxS, linyS, linzS, terrS, dolS, wepS, gernadeS;
-	private TextureImage avaT, ghostT, hills, grass, dolT, wepT, gernadeT;
-	private AnimatedShape robS;
+	private Quaternionf QuatFwd, QuatRight, QuatUp;
+	private GameObject tor, avatar, x, y, z, terr, weopon, dol1, dol2, plane, gernade, aimsphere, smallaimsphere;
+	private TerrainCollision ground;
+	private ObjShape torS, ghostS, avaS, linxS, linyS, linzS, terrS, dolS, wepS, gernadeS, aimsphereS;
+	private TextureImage avaT, ghostT, hills, grass, dolT, wepT, gernadeT, glockT;
+	private AnimatedShape robS, glockS;
 	private ObjShape npcShape;
 	private TextureImage npcTex;
-
+	private NodeController rrc, lrc, urc, drc;
 
 	private Light light;
 	private PhysicsEngine physicsEngine;
-	private PhysicsObject caps1P, caps2P, planeP, gernadeP, explosionP;
+	private PhysicsObject caps1P, caps2P, planeP, gernadeP, explosionP, groundP;
 	private boolean running = false;
 	private float vals[] = new float[16];
 
@@ -63,6 +68,11 @@ public class MyGame extends VariableFrameRateGame {
 	private int fluffyClouds, lakeIslands;
 
 	private CameraOrbit3D cameraOrbit3D;
+
+	private Robot robot; // these are additional variable declarations
+	private float curMouseX, curMouseY, centerX, centerY;
+	private float prevMouseX, prevMouseY; // loc of mouse prior to move
+	private boolean isRecentering; //indicates the Robot is in action	
 
 
 	private String serverAddress;
@@ -75,7 +85,7 @@ public class MyGame extends VariableFrameRateGame {
 	private Timer timer;
 
 	private IAudioManager audioMgr;
-	private Sound explosion, desertSound, bounce;
+	private Sound explosion, desertSound, bounce, shoot;
 
 	public MyGame(String serverAddress, int serverPort, String protocol) {
 		super();
@@ -109,9 +119,14 @@ public class MyGame extends VariableFrameRateGame {
 		robS.loadAnimation("WAVE", "robotWave.rka");
 		robS.loadAnimation("WALK", "robotWalk.rka");
 
+		glockS = new AnimatedShape("glock2.rkm", "glock2.rks");
+		glockS.loadAnimation("SHOOT", "glock2.rka");
+
 		npcShape = new ImportedModel("human1.2.obj");
 
 		gernadeS = new Sphere();
+
+		aimsphereS = new Sphere();
 
 		terrS = new TerrainPlane(1000);
 	}
@@ -128,20 +143,24 @@ public class MyGame extends VariableFrameRateGame {
 		gernadeT = new TextureImage("dirt.png");
 
 		npcTex = new TextureImage("dirt.png");
+		glockT = new TextureImage("weopon.jpg");
 
 	}
 
 	@Override
 	public void loadSounds()
-	{ AudioResource resource1, resource2, resource3;
+	{ AudioResource resource1, resource2, resource3, resource4;
 		audioMgr = engine.getAudioManager();
 		resource1 = audioMgr.createAudioResource("assets/sounds/explode.wav", AudioResourceType.AUDIO_SAMPLE);
 		//resource2 = audioMgr.createAudioResource("assets/sounds/desert.wav", AudioResourceType.AUDIO_SAMPLE);
 		resource3 = audioMgr.createAudioResource("assets/sounds/bounce.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource4 = audioMgr.createAudioResource("assets/sounds/shoot.wav", AudioResourceType.AUDIO_SAMPLE);
 		explosion = new Sound(resource1, SoundType.SOUND_EFFECT, 100, false);
 		//desertSound = new Sound(resource2, SoundType.SOUND_EFFECT, 100, true);
 		bounce = new Sound(resource3, SoundType.SOUND_EFFECT, 100, false);
+		shoot = new Sound(resource4, SoundType.SOUND_EFFECT, 100, false);
 		explosion.initialize(audioMgr);
+		shoot.initialize(audioMgr);
 		//desertSound.initialize(audioMgr);
 		bounce.initialize(audioMgr);
 		explosion.setMaxDistance(10.0f);
@@ -150,6 +169,9 @@ public class MyGame extends VariableFrameRateGame {
 		//desertSound.setMaxDistance(10.0f);
 		//desertSound.setMinDistance(0.5f);
 		//desertSound.setRollOff(5.0f);
+		shoot.setMaxDistance(5.0f);
+		shoot.setMinDistance(0.5f);
+		shoot.setRollOff(0.2f);
 
 		bounce.setMaxDistance(10.0f);
 		bounce.setMinDistance(0.5f);
@@ -158,7 +180,8 @@ public class MyGame extends VariableFrameRateGame {
 
 	@Override
 	public void buildObjects() {
-		Matrix4f initialTranslation, initialRotation, initialScale, initialTranslationWep, initialRotationWep, initialScaleWep;
+		Matrix4f initialTranslation, initialRotation, initialScale, initialTranslationWep, initialRotationWep, initialScaleWep, initialScaleAim,
+		initialTranslationSmallAim, initialTranslationAim, initialScaleSmallAim;
 
 		// build avatar
 		avatar = new GameObject(GameObject.root(), robS, avaT);
@@ -170,29 +193,58 @@ public class MyGame extends VariableFrameRateGame {
 		avatar.setLocalRotation(initialRotation);
 		initialScale = (new Matrix4f()).scaling(0.2f);
 		avatar.setLocalScale(initialScale);
-
+		//avatar.getRenderStates().disableRendering();
 		avatar.getRenderStates().hasLighting(true);
-		avatar.getRenderStates().isEnvironmentMapped(true);
+		//avatar.getRenderStates().isEnvironmentMapped(true);
+
+		//build aimsphere
+		aimsphere = new GameObject(GameObject.root(),aimsphereS, glockT);
+		
+		initialScaleAim = (new Matrix4f()).scaling(10f);
+		aimsphere.setLocalScale(initialScaleAim);
+		aimsphere.setParent(avatar);
+		initialTranslationAim = (new Matrix4f()).translation(0f,0.5f, 0f);
+		aimsphere.setLocalTranslation(initialTranslationAim);
+		//aimsphere.getRenderStates().disableRendering();
+		aimsphere.getRenderStates().setWireframe(true);
+	    //aimsphere.applyParentRotationToPosition(true);
 
 		//build avatar weopon
-		weopon = new GameObject(GameObject.root(), wepS, wepT);
+		weopon = new GameObject(GameObject.root(), glockS, glockT);
 		initialTranslationWep = (new Matrix4f()).translation(-0.35f, 0.1f, 0.6f);
 		//weopon.setLocalTranslation(initialTranslationWep);
 		weopon.getRenderStates().setModelOrientationCorrection(
-			(new Matrix4f()).rotationY((float) java.lang.Math.toRadians(90.0f)));
+		(new Matrix4f()).rotationY((float) java.lang.Math.toRadians(270.0f)));
 		initialRotationWep = (new Matrix4f()).rotationY((float) java.lang.Math.toRadians(135.0f));
 		//weopon.setLocalRotation(initialRotationWep);
-		initialScaleWep = (new Matrix4f()).scaling(0.2f);
+		initialScaleWep = (new Matrix4f()).scaling(0.4f);
 		//weopon.setLocalScale(initialScaleWep);
 		weopon.setParent(avatar);
 		//weopon.propagateTranslation(true);
-		//weopon.propagateRotation(true);
 		weopon.applyParentRotationToPosition(true);
 		weopon.setLocalScale(initialScaleWep);
 		//weopon.setLocalRotation(initialRotationWep);
 		weopon.setLocalTranslation(initialTranslationWep);
+		weopon.getRenderStates().hasLighting(true);
+		
+		
+
+		//build smallaimsphere
+		smallaimsphere = new GameObject(GameObject.root(),aimsphereS,glockT);
+		initialScaleSmallAim = (new Matrix4f()).scaling(0.1f);
+		smallaimsphere.setLocalScale(initialScaleSmallAim);
+		initialTranslationSmallAim = (new Matrix4f()).translation(0f,0f, 10f);
+		smallaimsphere.setLocalTranslation(initialTranslationSmallAim);
+		smallaimsphere.setParent(aimsphere);
+		smallaimsphere.applyParentRotationToPosition(true);
+		//smallaimsphere.propagateRotation(true);
+		
 
 
+
+
+		//build terrain
+		
 		// build torus along X axis
 		//dol1 = new GameObject(GameObject.root(), dolS, dolT);
 		//initialTranslation = (new Matrix4f()).translation(1, 0, 0);
@@ -216,6 +268,11 @@ public class MyGame extends VariableFrameRateGame {
 		terr.setHeightMap(hills);
 		terr.getRenderStates().setTiling(1);
 		terr.getRenderStates().setTileFactor(10);
+
+
+		//BvhTriangleMeshShape ground = new createTerrainShapeFromGameObject(terr);
+		
+		
 	}
 
 	@Override
@@ -235,7 +292,8 @@ public class MyGame extends VariableFrameRateGame {
 
 		// ----------------- initialize camera ----------------
 		positionCameraBehindAvatar();
-
+		//initMouseMode();
+		
 		// ----------------- INPUTS SECTION -----------------------------
 		setupNetworking();
 		im = engine.getInputManager();
@@ -248,8 +306,14 @@ public class MyGame extends VariableFrameRateGame {
 		String gpName = im.getFirstGamepadName();
 		Camera c = (engine.getRenderSystem())
 			.getViewport("MAIN").getCamera();
-		cameraOrbit3D = new CameraOrbit3D(
-			c, avatar, gpName, engine);
+		//cameraOrbit3D = new CameraOrbit3D(
+		//	c, avatar, gpName, engine);
+
+		//initRoll();
+
+		rrc = new RotationController(engine, new Vector3f(0,1,0), 1f);
+		rrc.addTarget(avatar);
+		(engine.getSceneGraph()).addNodeController(rrc);
 
 		//keyboard inputs
 		im.associateActionWithAllKeyboards(
@@ -314,6 +378,10 @@ public class MyGame extends VariableFrameRateGame {
 		planeP = (engine.getSceneGraph()).addPhysicsStaticPlane(tempTransform, up, 0.0f);
 		planeP.setBounciness(0.5f);
 		terr.setPhysicsObject(planeP);
+
+		//groundP = (engine.getSceneGraph()).addPhysicsDynamicPlane(tempTransform, up, height, terr);
+		terr.setPhysicsObject(groundP);
+
 		//engine.enableGraphicsWorldRender();
 		//engine.enablePhysicsWorldRender();
 
@@ -342,7 +410,7 @@ public class MyGame extends VariableFrameRateGame {
 		//desertSound.setLocation(avatar.getWorldLocation());
 		//setEarParameters();
 
-
+		//recenterMouse();
 		// build and set HUD
 		int elapsTimeSec = Math.round((float) (System.currentTimeMillis() - startTime) / 1000.0f);
 		String elapsTimeStr = Integer.toString(elapsTimeSec);
@@ -359,14 +427,20 @@ public class MyGame extends VariableFrameRateGame {
 
 		// update inputs and camera
 		im.update((float) elapsedTime);
-		cameraOrbit3D.updateCameraPosition();
-		//positionCameraBehindAvatar();
+		//cameraOrbit3D.updateCameraPosition();
+		positionCameraBehindAvatar();
+		initMouseMode();
 		processNetworking((float) elapsedTime);
 
 		Vector3f loc = avatar.getWorldLocation();
+		
+
 		float height = terr.getHeight(loc.x(), loc.z());
 		robS.updateAnimation();
+		glockS.updateAnimation();
 		avatar.setLocalLocation(new Vector3f(loc.x(), height + 0.75f, loc.z()));
+
+		
 
 		Matrix4f currentTranslation, currentRotation;
 		double totalTime = System.currentTimeMillis() - startTime;
@@ -424,10 +498,12 @@ public class MyGame extends VariableFrameRateGame {
 			velocity[2] = where.z()*3;
 			gernadeP.setLinearVelocity(velocity);
 			gernade.setPhysicsObject(gernadeP);
+			
 		}
 
 		if(throwGernade)
 		{
+			//Vector3f locgren = gernade.getWorldLocation();
 			float capVel[] = gernadeP.getLinearVelocity();
 			if(gernade.getLocalLocation().y() < 0.16 & gernade.getLocalLocation().y() > 0.12)
 			{
@@ -452,6 +528,12 @@ public class MyGame extends VariableFrameRateGame {
 				setEarParameters();
 				explosion.play();
 				engine.getSceneGraph().removePhysicsObject(gernadeP);
+				/*if (gernade.getWorldLocation().y() >= terr.getHeight(locgren.x, locgren.z)) {
+			
+					gernade.setLocalLocation(new Vector3f(locgren.x(), height + 0.75f, locgren.z()));
+		
+				}
+				*/
 				timer = new Timer();
 				timer.schedule(
 					new TimerTask()
@@ -468,15 +550,19 @@ public class MyGame extends VariableFrameRateGame {
 					}, 3000);
 				throwGernade = false;
 			}
+			
+			
+			
+		
 		}
 
 
 	}
 
 	private void positionCameraBehindAvatar() {
-		Vector4f u = new Vector4f(-1f, 0f, 0f, 1f);
+		Vector4f u = new Vector4f(0f, 0f, 0f, 1f);
 		Vector4f v = new Vector4f(0f, 1f, 0f, 1f);
-		Vector4f n = new Vector4f(0f, 0f, 1f, 1f);
+		Vector4f n = new Vector4f(0f, 0f, 0f, 1f);
 		u.mul(avatar.getWorldRotation());
 		v.mul(avatar.getWorldRotation());
 		n.mul(avatar.getWorldRotation());
@@ -486,9 +572,9 @@ public class MyGame extends VariableFrameRateGame {
 		position.add(v.x() * .75f, v.y() * .75f, v.z() * .75f);
 		Camera c = (engine.getRenderSystem()).getViewport("MAIN").getCamera();
 		c.setLocation(position);
-		c.setU(new Vector3f(u.x(), u.y(), u.z()));
-		c.setV(new Vector3f(v.x(), v.y(), v.z()));
-		c.setN(new Vector3f(n.x(), n.y(), n.z()));
+		//c.setU(new Vector3f(u.x(), u.y(), u.z()));
+		//c.setV(new Vector3f(v.x(), v.y(), v.z()));
+		//c.setN(new Vector3f(n.x(), n.y(), n.z()));
 	}
 
 	@Override
@@ -509,6 +595,25 @@ public class MyGame extends VariableFrameRateGame {
 			case KeyEvent.VK_G: {
 				throwGernade = true;
 				break;
+			}
+			case KeyEvent.VK_I:
+			{ glockS.stopAnimation();
+				glockS.playAnimation("SHOOT", 1f,
+			AnimatedShape.EndType.STOP, 0);
+			shoot.setLocation(avatar.getWorldLocation());
+			setEarParameters();
+			shoot.play();
+			break;
+			}
+			case KeyEvent.VK_O:
+			{ glockS.stopAnimation();
+			break;
+			}
+			case KeyEvent.VK_L:
+			{ 	Camera c = engine.getRenderSystem()
+				.getViewport("MAIN").getCamera();
+				c.lookAt(gernade);
+			break;
 			}
 			default:
 				;
@@ -555,6 +660,156 @@ public class MyGame extends VariableFrameRateGame {
 		}
 	}
 
+	private void initMouseMode()
+	{ RenderSystem rs = engine.getRenderSystem();
+	Viewport vw = rs.getViewport("MAIN");
+	float left = vw.getActualLeft();
+	float bottom = vw.getActualBottom();
+	float width = vw.getActualWidth();
+	float height = vw.getActualHeight();
+	centerX = (int) (left + width/2);
+	centerY = (int) (bottom - height/2);
+	isRecentering = false;
+	try // note that some platforms may not support the Robot class
+	{ robot = new Robot(); } catch (AWTException ex)
+	{ throw new RuntimeException("Couldn't create Robot!"); }
+	recenterMouse();
+	prevMouseX = centerX; // 'prevMouse' defines the initial
+	prevMouseY = centerY; // mouse position
+	 //also change the cursor
+	Cursor crosshair = Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR);
+	rs.getGLCanvas().setCursor(crosshair);
+
+	}
+
+	private void recenterMouse()
+	{ // use the robot to move the mouse to the center point.
+	// Note that this generates one MouseEvent.
+	RenderSystem rs = engine.getRenderSystem();
+	Viewport vw = rs.getViewport("MAIN");
+	float left = vw.getActualLeft();
+	float bottom = vw.getActualBottom();
+	float width = vw.getActualWidth();
+	float height = vw.getActualHeight();
+	double centerX = (double) (left + width/2.0f);
+	double centerY = (double) (bottom - height/2.0f);
+	isRecentering = true;
+	robot.mouseMove((int)centerX, (int)centerY);
+	}
+	public void initRoll() {
+	Camera c = engine.getRenderSystem()
+	.getViewport("MAIN").getCamera();
+	WorldUpVector = c.getV();
+	WorldRightVector = c.getU();
+	}
+
+	public void yaw(float mouseDeltaX)
+	{ float tilt;
+		Camera c = engine.getRenderSystem()
+		.getViewport("MAIN").getCamera();
+		Vector3f rightVector = c.getU();
+		Vector3f upVector = c.getV();
+		Vector3f fwdVector = c.getN();
+		if (mouseDeltaX < 0.0) tilt = -1.0f;
+		else if (mouseDeltaX > 0.0) tilt = 1.0f;
+		else tilt = 0.0f;
+		rightVector.rotateAxis(0.01f*tilt, upVector.x(),
+		upVector.y(), upVector.z());
+		fwdVector.rotateAxis(0.01f*tilt, upVector.x(),
+		upVector.y(), upVector.z());
+		c.setU(rightVector);
+		c.setN(fwdVector);
+	}
+
+	public void pitch(float mouseDeltaY) {
+		float tilt;
+		Camera c = engine.getRenderSystem().getViewport("MAIN").getCamera();
+		X_AXIS = new Vector3f().add(1,0,0);
+		Vector3f rightVector = c.getU();
+		Vector3f upVector = c.getV();
+		Vector3f fwdVector = c.getN();
+		
+		if (mouseDeltaY < 0.0) {
+			tilt = -1.0f;
+		} else if (mouseDeltaY > 0.0) {
+			tilt = 1.0f;
+		} else {
+			tilt = 0.0f;
+		}
+		//avatar.pitch(0.01f*tilt);
+		//Quaternionf pitchRotation = new Quaternionf().rotateAxis(0.01f*tilt, rightVector);
+    	//pitchRotation.transform(upVector);
+    	//pitchRotation.transform(fwdVector);
+
+		
+		
+		//c.lookAt(fwdVector);
+		//QuatFwd = new Quaternionf().fromAxisAngleDeg(fwdVector, 0.01f*tilt);
+		//QuatUp = new Quaternionf().fromAxisAngleDeg(upVector, 0.01f*tilt);
+
+		//QuatFwd.getEulerAnglesXYZ(fwdVector);
+		//QuatUp.getEulerAnglesXYZ(upVector);
+		upVector.rotateAxis(0.01f*tilt, rightVector.x(),
+		rightVector.y(), rightVector.z());
+		fwdVector.rotateAxis(0.01f*tilt, rightVector.x(),
+		rightVector.y(), rightVector.z());
+
+		c.setV(upVector);
+		c.setN(fwdVector);
+		
+		//Vector3f Roll = upVector.orthogonalize(rightVector);
+		//c.setV(Roll);
+		//NewN = rightVector.cross(upVector);
+		//c.setN(NewN);
+		//c.setU(WorldRightVector);
+			
+	}
+
+	public void pitchyaw(float mouseDeltaX, float mouseDeltaY)
+	{	Matrix4f leftRotation, rightRotation, upRotation, downRotation;
+		float tiltX;
+		float tiltY;
+		Camera c = engine.getRenderSystem()
+		.getViewport("MAIN").getCamera();
+		Vector3f rightVector = c.getU();
+		Vector3f upVector = c.getV();
+		Vector3f fwdVector = c.getN();
+
+		if (mouseDeltaX < 0.0) {
+		tiltX = 0.1f;
+		//rrc.enable();
+		//rrc.toggle();
+		//rrc.disable();
+		}
+		else if (mouseDeltaX > 0.0) {
+		 tiltX = -0.1f;
+		// rrc.enable();
+		}
+		else {tiltX = 0.0f;
+			//rrc.disable();
+		}
+		//MouseDeltaY
+		if (mouseDeltaY < 0.0) {
+			tiltY = -0.1f;
+			
+		} else if (mouseDeltaY > 0.0) {
+			tiltY = 0.1f;
+		} else {
+			tiltY = 0.0f;
+		}
+
+		leftRotation = (new Matrix4f()).rotationY((float) java.lang.Math.toRadians(tiltX*0.01f));
+		rightRotation = (new Matrix4f()).rotationY((float) java.lang.Math.toRadians(-tiltX*0.01f));
+	
+		if (tiltX != 0) {
+		avatar.yaw(tiltX); }
+		if (tiltY != 0) {
+			avatar.pitch(tiltY); }
+		c.lookAt(smallaimsphere);
+		//aimsphere.pitch(tiltX);
+		//aimsphere.setLocalRotation(leftRotation);
+		//aimsphere.setLocalRotation(rightRotation);
+	}
 	protected void processNetworking(float elapsTime) {        // Process packets received by the client from the server
 		if (protClient != null)
 			protClient.processPackets();
@@ -586,6 +841,33 @@ public class MyGame extends VariableFrameRateGame {
 		lakeIslands = (engine.getSceneGraph()).loadCubeMap("lakeIslands");
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
 		(engine.getSceneGraph()).setSkyBoxEnabled(true);
+	}
+
+	@Override
+	public void mouseMoved(MouseEvent e)
+	{ // if robot is recentering and the MouseEvent location is in the center,
+	// then this event was generated by the robot
+	if (isRecentering &&
+	centerX == e.getXOnScreen() && centerY == e.getYOnScreen())
+	{ // mouse recentered, recentering complete
+	isRecentering = false;
+	}
+	else
+	{ // event was due to a user mouse-move, and must be processed
+	curMouseX = e.getXOnScreen();
+	curMouseY = e.getYOnScreen();
+	float mouseDeltaX = prevMouseX - curMouseX;
+	float mouseDeltaY = prevMouseY - curMouseY;
+	//yaw(mouseDeltaX);
+	//pitch(mouseDeltaY);
+	pitchyaw(mouseDeltaX, mouseDeltaY);
+	prevMouseX = curMouseX;
+	prevMouseY = curMouseY;
+	// tell robot to put the cursor to the center (since user just moved it)
+	recenterMouse();
+	prevMouseX = centerX; // reset prev to center
+	prevMouseY = centerY;
+	}
 	}
 
 
@@ -637,7 +919,7 @@ public class MyGame extends VariableFrameRateGame {
 			}
 		}
 	}
-
+	
 	public void setEarParameters()
 	{ Camera camera = (engine.getRenderSystem()).getViewport("MAIN").getCamera();
 		audioMgr.getEar().setLocation(avatar.getWorldLocation());
