@@ -335,7 +335,7 @@ public class MyGame extends VariableFrameRateGame {
 
 		if(single)
 		{
-			npcController.start(5, GameObject.root(), ghostS, ghostT, terr);
+			npcController.start(5, GameObject.root(), ghostS, npcTex, terr);
 		}
 
 
@@ -398,7 +398,7 @@ public class MyGame extends VariableFrameRateGame {
 
 		if(single)
 		{
-			npcController.npcLoop(avatar, GameObject.root(), ghostS, ghostT);
+			npcController.npcLoop(avatar, GameObject.root(), ghostS, npcTex);
 		}
 		// update sound
 		//desertSound.setLocation(avatar.getWorldLocation());
