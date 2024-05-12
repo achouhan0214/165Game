@@ -1,0 +1,10 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "c:\\Users\\bkala\\Downloads\\javagaming(1)\\javagaming\\joml\\joml-1.10.5.jar",
+        "c:\\Users\\bkala\\Downloads\\javagaming(1)\\javagaming\\jogamp-fat.jar",
+        "c:\\Users\\bkala\\Downloads\\javagaming(1)\\javagaming\\vecmath.jar",
+        "c:\\Users\\bkala\\Downloads\\javagaming(1)\\javagaming\\jinput.jar",
+        "c:\\Users\\bkala\\Downloads\\javagaming(1)\\javagaming\\jbullet.jar"
+    ]
+}

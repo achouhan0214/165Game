@@ -49,7 +49,7 @@ public class MyGame extends VariableFrameRateGame {
 	private double startTime, prevTime, elapsedTime, amt;
 
 	private Quaternionf QuatFwd, QuatRight, QuatUp;
-	private GameObject tor, avatar, x, y, z, terr, weopon, dol1, dol2, plane, gernade, aimsphere, smallaimsphere;
+	private GameObject tor, avatar, x, y, z, terr, weopon, dol1, dol2, plane, gernade, aimsphere, smallaimsphere, locaimsphere;
 	private TerrainCollision ground;
 	private ObjShape torS, ghostS, avaS, linxS, linyS, linzS, terrS, dolS, wepS, gernadeS, aimsphereS;
 	private TextureImage avaT, ghostT, hills, grass, dolT, wepT, gernadeT, glockT;
@@ -193,7 +193,7 @@ public class MyGame extends VariableFrameRateGame {
 		avatar.setLocalRotation(initialRotation);
 		initialScale = (new Matrix4f()).scaling(0.2f);
 		avatar.setLocalScale(initialScale);
-		//avatar.getRenderStates().disableRendering();
+		avatar.getRenderStates().disableRendering();
 		avatar.getRenderStates().hasLighting(true);
 		//avatar.getRenderStates().isEnvironmentMapped(true);
 
@@ -203,11 +203,12 @@ public class MyGame extends VariableFrameRateGame {
 		initialScaleAim = (new Matrix4f()).scaling(10f);
 		aimsphere.setLocalScale(initialScaleAim);
 		aimsphere.setParent(avatar);
+
 		initialTranslationAim = (new Matrix4f()).translation(0f,0.5f, 0f);
 		aimsphere.setLocalTranslation(initialTranslationAim);
 		//aimsphere.getRenderStates().disableRendering();
 		aimsphere.getRenderStates().setWireframe(true);
-	    //aimsphere.applyParentRotationToPosition(true);
+	    aimsphere.applyParentRotationToPosition(true);
 
 		//build avatar weopon
 		weopon = new GameObject(GameObject.root(), glockS, glockT);
@@ -237,9 +238,13 @@ public class MyGame extends VariableFrameRateGame {
 		smallaimsphere.setLocalTranslation(initialTranslationSmallAim);
 		smallaimsphere.setParent(aimsphere);
 		smallaimsphere.applyParentRotationToPosition(true);
+		smallaimsphere.getRenderStates().disableRendering();
 		//smallaimsphere.propagateRotation(true);
 		
-
+		locaimsphere =	new GameObject(GameObject.root(),aimsphereS,glockT);
+		locaimsphere.setLocalScale(initialScaleAim);
+		locaimsphere.setParent(aimsphere);
+		
 
 
 
@@ -268,10 +273,6 @@ public class MyGame extends VariableFrameRateGame {
 		terr.setHeightMap(hills);
 		terr.getRenderStates().setTiling(1);
 		terr.getRenderStates().setTileFactor(10);
-
-
-		//BvhTriangleMeshShape ground = new createTerrainShapeFromGameObject(terr);
-		
 		
 	}
 
@@ -577,6 +578,8 @@ public class MyGame extends VariableFrameRateGame {
 		//c.setN(new Vector3f(n.x(), n.y(), n.z()));
 	}
 
+	//@Override
+	//public void MouseEvent(MouseEvent )
 	@Override
 	public void keyPressed(KeyEvent e) {
 		switch (e.getKeyCode()) {
@@ -765,6 +768,14 @@ public class MyGame extends VariableFrameRateGame {
 			
 	}
 
+	// Function to check if a vector is horizontal
+    public static boolean isHorizontal(Vector3f vector) {
+        // Assuming "horizontal" means having a small y-component and large x- and z-components
+        // You can adjust the threshold values according to your needs
+        float threshold = 0.1f;
+        return Math.abs(vector.y) < threshold; // Assuming y-component is up direction
+    }
+
 	public void pitchyaw(float mouseDeltaX, float mouseDeltaY)
 	{	Matrix4f leftRotation, rightRotation, upRotation, downRotation;
 		float tiltX;
@@ -774,19 +785,16 @@ public class MyGame extends VariableFrameRateGame {
 		Vector3f rightVector = c.getU();
 		Vector3f upVector = c.getV();
 		Vector3f fwdVector = c.getN();
+		
 
 		if (mouseDeltaX < 0.0) {
 		tiltX = 0.1f;
-		//rrc.enable();
-		//rrc.toggle();
-		//rrc.disable();
 		}
 		else if (mouseDeltaX > 0.0) {
 		 tiltX = -0.1f;
-		// rrc.enable();
 		}
 		else {tiltX = 0.0f;
-			//rrc.disable();
+
 		}
 		//MouseDeltaY
 		if (mouseDeltaY < 0.0) {
@@ -798,18 +806,60 @@ public class MyGame extends VariableFrameRateGame {
 			tiltY = 0.0f;
 		}
 
-		leftRotation = (new Matrix4f()).rotationY((float) java.lang.Math.toRadians(tiltX*0.01f));
-		rightRotation = (new Matrix4f()).rotationY((float) java.lang.Math.toRadians(-tiltX*0.01f));
+	Vector3f cameraForward = c.getN();
+        
+
+	Vector3f worldUp = new Vector3f(0,1,0);
+	Vector3f worldDown = new Vector3f(0,-1,0);
+
+
+
+	float angleUp = cameraForward.angle(worldUp);
+	float angleDown = cameraForward.angle(worldUp);
 	
-		if (tiltX != 0) {
+	// Convert the angle from radians to degrees
+	float angleDegreesUp = (float) Math.toDegrees(angleUp);
+	float angleDegreesDown = (float) Math.toDegrees(angleDown);
+	
+
+		if (angleDegreesDown < 130)	{
+			if (tiltX != 0) {
+				avatar.yaw(tiltX); }
+				if (tiltY != 0) {
+					avatar.pitch(tiltY); }
+				c.lookAt(smallaimsphere);
+
+		}
+		if (angleDegreesUp > 30)	
+		{
+			if (tiltX != 0) {
+				avatar.yaw(tiltX); }
+				if (tiltY != 0) {
+					avatar.pitch(tiltY); }
+				c.lookAt(smallaimsphere);
+
+		}
+		if (angleDegreesUp <= 30) {
+			avatar.pitch(-.2f);
+			c.lookAt(smallaimsphere);
+
+
+		}
+		 if (angleDegreesUp >= 130) {
+			avatar.pitch(.2f);
+			c.lookAt(smallaimsphere);
+
+		}
+		
+		/* 
+	if (tiltX != 0) {
 		avatar.yaw(tiltX); }
 		if (tiltY != 0) {
 			avatar.pitch(tiltY); }
 		c.lookAt(smallaimsphere);
-		//aimsphere.pitch(tiltX);
-		//aimsphere.setLocalRotation(leftRotation);
-		//aimsphere.setLocalRotation(rightRotation);
+		*/
 	}
+	
 	protected void processNetworking(float elapsTime) {        // Process packets received by the client from the server
 		if (protClient != null)
 			protClient.processPackets();
@@ -837,7 +887,7 @@ public class MyGame extends VariableFrameRateGame {
 
 	@Override
 	public void loadSkyBoxes() {
-		fluffyClouds = (engine.getSceneGraph()).loadCubeMap("fluffyClouds");
+		fluffyClouds = (engine.getSceneGraph()).loadCubeMap("desert");
 		lakeIslands = (engine.getSceneGraph()).loadCubeMap("lakeIslands");
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
 		(engine.getSceneGraph()).setSkyBoxEnabled(true);
