@@ -14,6 +14,7 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 	@Override
 	public void processPacket(Object o, InetAddress senderIP, int senderPort) {
 		String message = (String) o;
+		System.out.println(message);
 		String[] messageTokens = message.split(",");
 
 		if (messageTokens.length > 0) {        // JOIN -- Case where client just joined the server
@@ -102,6 +103,10 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 				UUID clientID = UUID.fromString(messageTokens[1]);
 				String[] pos = {messageTokens[2], messageTokens[3], messageTokens[4], messageTokens[5], messageTokens[6], messageTokens[7]};
 				sendGernadeMessages(clientID, pos);
+			}
+			if (messageTokens[0].compareTo("dead") == 0) {
+				UUID clientID = UUID.fromString(messageTokens[1]);
+				sendDeathMessages(clientID);
 			}
 		}
 	}
@@ -275,4 +280,15 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 	catch (IOException e)
 	{	e.printStackTrace();
 	}	}
+
+	public void sendDeathMessages(UUID clientID)
+	{
+		try {
+			String message = new String("dead," + clientID.toString());
+			sendPacket(message, clientID);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
 }

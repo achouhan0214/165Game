@@ -202,7 +202,7 @@ public class ProtocolClient extends GameConnectionClient
 
 			}
 
-			if (messageTokens[0].compareTo("death") == 0)
+			if (messageTokens[0].compareTo("dead") == 0)
 			{
 				game.addKills();
 			}
@@ -358,6 +358,7 @@ public class ProtocolClient extends GameConnectionClient
 	{
 		try {
 			String message = new String("dead," + id.toString());
+			System.out.println("happend");
 			sendPacket(message);
 		} catch (IOException e) {
 			e.printStackTrace();
