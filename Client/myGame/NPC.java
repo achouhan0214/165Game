@@ -64,7 +64,7 @@ public class NPC extends GameObject {
 
         public void speedUp()
         {
-                speed += 0.002f;
+                speed = 0.04f;
         }
 
 }

@@ -53,7 +53,7 @@ public class MyGame extends VariableFrameRateGame {
 	private TextureImage npcTex;
 
 
-	private Light light;
+	private Light light, flash;
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject planeP, gernadeP, explosionP, avatarP, npcP, bulletP, enemyBulletP,  enemyGarnadeP, enemyExplosionP;
 	private boolean running = false;
@@ -100,7 +100,7 @@ public class MyGame extends VariableFrameRateGame {
 		else
 		{
 			this.serverProtocol = ProtocolType.UDP;
-			single =false;
+			//single =false;
 		}
 
 	}
@@ -174,9 +174,6 @@ public class MyGame extends VariableFrameRateGame {
 		explosion.setMaxDistance(10.0f);
 		explosion.setMinDistance(0.5f);
 		explosion.setRollOff(0.2f);
-		//desertSound.setMaxDistance(10.0f);
-		//desertSound.setMinDistance(0.5f);
-		//desertSound.setRollOff(5.0f);
 
 		bounce.setMaxDistance(10.0f);
 		bounce.setMinDistance(0.5f);
@@ -190,7 +187,7 @@ public class MyGame extends VariableFrameRateGame {
 		// build avatar
 		avatarShape = avaShapePath;
 		avatarTexture = avaTexturePath;
-		characterSelect("dol");
+
 		avatar = new GameObject(GameObject.root(), avaS, avaT);
 		initialTranslation = (new Matrix4f()).translation(-1f, 1f, 1f);
 		avatar.setLocalTranslation(initialTranslation);
@@ -200,9 +197,7 @@ public class MyGame extends VariableFrameRateGame {
 		avatar.setLocalRotation(initialRotation);
 		initialScale = (new Matrix4f()).scaling(0.2f);
 		avatar.setLocalScale(initialScale);
-
-		//avatar.getRenderStates().hasLighting(true);
-		//avatar.getRenderStates().isEnvironmentMapped(true);
+		characterSelect("human");
 
 		//build avatar weopon
 		weopon = new GameObject(GameObject.root(), wepS, wepT);
@@ -243,6 +238,11 @@ public class MyGame extends VariableFrameRateGame {
 		light = new Light();
 		light.setLocation(new Vector3f(0f, 5f, 0f));
 		(engine.getSceneGraph()).addLight(light);
+
+		flash = new Light();
+		flash.setLocation(new Vector3f(0f, 5f, 0f));
+		(engine.getSceneGraph()).addLight(flash);
+
 	}
 
 	@Override
@@ -330,26 +330,17 @@ public class MyGame extends VariableFrameRateGame {
 		planeP.setBounciness(0.5f);
 		terr.setPhysicsObject(planeP);
 
-		/*mass = 0.0f;
-		float size[] = {0.60f, 1f, 0.60f};
-		translation = new Matrix4f(avatar.getLocalTranslation());
-		tempTransform = toDoubleArray(translation.get(vals));
-		avatarP = (engine.getSceneGraph()).addPhysicsBox(mass, tempTransform, size);
-		avatarP.setBounciness(0f);
-		avatarP.setFriction(0f);
-		avatar.setPhysicsObject(avatarP);*/
 
 		npcController = new NPCController();
 
 		if(single)
 		{
-			//npc = new NPC(GameObject.root(), ghostS, ghostT);
 			npcController.start(5, GameObject.root(), ghostS, ghostT, terr);
 		}
 
 
-		engine.enableGraphicsWorldRender();
-		engine.enablePhysicsWorldRender();
+		//engine.enableGraphicsWorldRender();
+		//engine.enablePhysicsWorldRender();
 
 
 
@@ -419,10 +410,7 @@ public class MyGame extends VariableFrameRateGame {
 		String elapsTimeStr = Integer.toString(elapsTimeSec);
 		String counterStr = Integer.toString(kills);
 		String dispStr1 = "Time = " + elapsTimeStr;
-		String dispStr2 = "camera position = "
-			+ (c.getLocation()).x()
-			+ ", " + (c.getLocation()).y()
-			+ ", " + (c.getLocation()).z();
+		String dispStr2 = Integer.toString(deaths);
 		Vector3f hud1Color = new Vector3f(1, 0, 0);
 		Vector3f hud2Color = new Vector3f(1, 1, 1);
 		(engine.getHUDmanager()).setHUD1(counterStr, hud1Color, 15, 15);
@@ -479,7 +467,7 @@ public class MyGame extends VariableFrameRateGame {
 				if(avatar.getLocalLocation().equals(enemyBullet.getLocalLocation(), 1f)){
 					if(avatarP == null){
 						float mass = 1.0f;
-						float size[] = {1, 2, 1};
+						float size[] = {.5f, 1f, 0.5f};
 						float radius = 0.10f;
 						double[] tempTransform;
 						Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
@@ -505,6 +493,7 @@ public class MyGame extends VariableFrameRateGame {
 									engine.getSceneGraph().removeGameObject(weopon);
 									engine.getSceneGraph().removeGameObject(avatar);
 									weopon = null;
+									deaths++;
 									avatarP = null;
 									avatar = null;
 
@@ -552,7 +541,7 @@ public class MyGame extends VariableFrameRateGame {
 								if(enemyGarnade.getLocalLocation().equals(avatar.getLocalLocation(), 0.9f)){
 									if(avatarP == null) {
 										float mass = 1.0f;
-										float size[] = {1, 2, 1};
+										float size[] = {0.5f, 1f, 0.5f};
 										float radius = 0.10f;
 										double[] tempTransform;
 										Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
@@ -571,6 +560,7 @@ public class MyGame extends VariableFrameRateGame {
 										engine.getSceneGraph().removeGameObject(weopon);
 										engine.getSceneGraph().removeGameObject(avatar);
 										weopon = null;
+										deaths++;
 										avatarP = null;
 										avatar = null;
 										protClient.sendDeathMessage();
@@ -607,7 +597,7 @@ public class MyGame extends VariableFrameRateGame {
 
 				if(avatarP == null) {
 					mass = 1.0f;
-					float size[] = {1, 2, 1};
+					float size[] = {0.5f, 1f, 0.5f};
 					radius = 0.10f;
 					translation = new Matrix4f(avatar.getLocalTranslation());
 					tempTransform = toDoubleArray(translation.get(vals));
@@ -634,6 +624,7 @@ public class MyGame extends VariableFrameRateGame {
 							engine.getSceneGraph().removeGameObject(weopon);
 							engine.getSceneGraph().removeGameObject(avatar);
 							weopon = null;
+							deaths++;
 							avatarP = null;
 							avatar = null;
 							engine.getSceneGraph().removePhysicsObject(enemyExplosionP);
@@ -660,7 +651,7 @@ public class MyGame extends VariableFrameRateGame {
 				int who = npcController.gotHit(bullet.getLocalLocation(), 0.5f);
 				if(who != -1){
 					float mass = 100.0f;
-					float size[] = {1, 2, 1};
+					float size[] = {0.5f, 1f, 0.5f};
 					float radius = 0.10f;
 					double[] tempTransform;
 					NPC temp = npcController.getNPC(who);
@@ -725,6 +716,9 @@ public class MyGame extends VariableFrameRateGame {
 					setEarParameters();
 					explosion.play();
 					engine.getSceneGraph().removePhysicsObject(gernadeP);
+					flash.setLocation(gernade.getLocalLocation());
+					flash.setRange(2f);
+					flash.setAmbient(200,0,0);
 					timer = new Timer();
 					timer.schedule(
 						new TimerTask()
@@ -735,7 +729,7 @@ public class MyGame extends VariableFrameRateGame {
 								int who = npcController.gotHit(gernade.getLocalLocation(), 2f);
 								if(who != -1){
 									float mass = 1.0f;
-									float size[] = {1, 2, 1};
+									float size[] = {0.5f, 1f, 0.5f};
 									float radius = 0.10f;
 									double[] tempTransform;
 									NPC temp = npcController.getNPC(who);
@@ -744,7 +738,7 @@ public class MyGame extends VariableFrameRateGame {
 									npcP = (engine.getSceneGraph()).addPhysicsBox(mass, tempTransform, size);
 									npcP.setBounciness(0f);
 									npcP.setFriction(30f);
-									float[] where = bulletP.getLinearVelocity();
+									float[] where = gernadeP.getLinearVelocity();
 									float velocity[] = new float[3];
 									velocity[0] = where[0]*0.0002f;
 									velocity[1] = where[1]*0.0002f;
@@ -762,6 +756,9 @@ public class MyGame extends VariableFrameRateGame {
 								}
 								engine.getSceneGraph().removePhysicsObject(explosionP);
 								engine.getSceneGraph().removeGameObject(gernade);
+								flash.setAmbient(0, 0, 0);
+								flash.setDiffuse(0, 0, 0);
+								flash.setSpecular(0, 0, 0);
 								gernadeP = null;
 								explosionP = null;
 								gernade = null;
@@ -793,8 +790,11 @@ public class MyGame extends VariableFrameRateGame {
 					setEarParameters();
 					explosion.play();
 					engine.getSceneGraph().removePhysicsObject(gernadeP);
+					flash.setLocation(gernade.getLocalLocation());
+					flash.setRange(2f);
+					flash.setAmbient(200,0,0);
 					mass = 100.0f;
-					float size[] = {1, 2, 1};
+					float size[] = {0.5f, 1f, 0.5f};
 					NPC temp = npcController.getNPC(who);
 					translation = new Matrix4f(temp.getLocalTranslation());
 					tempTransform = toDoubleArray(translation.get(vals));
@@ -830,6 +830,9 @@ public class MyGame extends VariableFrameRateGame {
 							public void run() {
 								engine.getSceneGraph().removePhysicsObject(explosionP);
 								engine.getSceneGraph().removeGameObject(gernade);
+								flash.setAmbient(0, 0, 0);
+								flash.setDiffuse(0, 0, 0);
+								flash.setSpecular(0, 0, 0);
 								gernadeP = null;
 								explosionP = null;
 								gernade = null;
@@ -849,13 +852,13 @@ public class MyGame extends VariableFrameRateGame {
 					System.out.println("you died");
 					if (avatarP == null) {
 						float mass = 1.0f;
-						float size[] = {1, 2, 1};
+						float size[] = {0.5f, 1f, 0.5f};
 						float radius = 0.10f;
 						double[] tempTransform;
 						Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
 						tempTransform = toDoubleArray(translation.get(vals));
 						NPC temp = npcController.getNPC(who);
-						avatarP = (engine.getSceneGraph()).addPhysicsCapsule(mass, tempTransform, radius, 1f);
+						avatarP = (engine.getSceneGraph()).addPhysicsBox(mass, tempTransform, size);
 						avatarP.setBounciness(0f);
 						avatarP.setFriction(30f);
 						Vector3f where = temp.getLocalForwardVector();
@@ -873,6 +876,7 @@ public class MyGame extends VariableFrameRateGame {
 									engine.getSceneGraph().removePhysicsObject(avatarP);
 									engine.getSceneGraph().removeGameObject(weopon);
 									engine.getSceneGraph().removeGameObject(avatar);
+									deaths++;
 									weopon = null;
 									avatarP = null;
 									avatar = null;
