@@ -44,7 +44,7 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 			// Received Message Format: (create,localId,x,y,z)
 			if (messageTokens[0].compareTo("create") == 0) {
 				UUID clientID = UUID.fromString(messageTokens[1]);
-				String[] pos = {messageTokens[2], messageTokens[3], messageTokens[4]};
+				String[] pos = {messageTokens[2], messageTokens[3], messageTokens[4], messageTokens[5], messageTokens[6]};
 				sendCreateMessages(clientID, pos);
 				sendWantsDetailsMessages(clientID);
 			}
@@ -54,7 +54,7 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 			if (messageTokens[0].compareTo("dsfr") == 0) {
 				UUID clientID = UUID.fromString(messageTokens[1]);
 				UUID remoteID = UUID.fromString(messageTokens[2]);
-				String[] pos = {messageTokens[3], messageTokens[4], messageTokens[5]};
+				String[] pos = {messageTokens[3], messageTokens[4], messageTokens[5], messageTokens[6], messageTokens[7]};
 				sendDetailsForMessage(clientID, remoteID, pos);
 			}
 
@@ -85,6 +85,23 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 					messageTokens[16],
 					messageTokens[17]};
 				sendRotationMessage(clientID, rotation);
+			}
+
+			if (messageTokens[0].compareTo("shoot") == 0) {
+				UUID clientID = UUID.fromString(messageTokens[1]);
+				String[] pos = {messageTokens[2], messageTokens[3], messageTokens[4], messageTokens[5], messageTokens[6], messageTokens[7]};
+				sendShootMessages(clientID, pos);
+			}
+
+			if (messageTokens[0].compareTo("change") == 0) {
+				UUID clientID = UUID.fromString(messageTokens[1]);
+				String[] pos = {messageTokens[2], messageTokens[3]};
+				sendChangeMessages(clientID, pos);
+			}
+			if (messageTokens[0].compareTo("gernade") == 0) {
+				UUID clientID = UUID.fromString(messageTokens[1]);
+				String[] pos = {messageTokens[2], messageTokens[3], messageTokens[4], messageTokens[5], messageTokens[6], messageTokens[7]};
+				sendGernadeMessages(clientID, pos);
 			}
 		}
 	}
@@ -133,13 +150,44 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 		{	String message = new String("create," + clientID.toString());
 			message += "," + position[0];
 			message += "," + position[1];
-			message += "," + position[2];	
+			message += "," + position[2];
+			message += "," + position[3];
+			message += "," + position[4];
 			forwardPacketToAll(message, clientID);
 		} 
 		catch (IOException e) 
 		{	e.printStackTrace();
 	}	}
-	
+
+	public void sendShootMessages(UUID clientID, String[] position)
+	{	try
+	{	String message = new String("shoot," + clientID.toString());
+		message += "," + position[0];
+		message += "," + position[1];
+		message += "," + position[2];
+		message += "," + position[3];
+		message += "," + position[4];
+		message += "," + position[5];
+		forwardPacketToAll(message, clientID);
+	}
+	catch (IOException e)
+	{	e.printStackTrace();
+	}	}
+
+	public void sendGernadeMessages(UUID clientID, String[] position)
+	{	try
+	{	String message = new String("gernade," + clientID.toString());
+		message += "," + position[0];
+		message += "," + position[1];
+		message += "," + position[2];
+		message += "," + position[3];
+		message += "," + position[4];
+		message += "," + position[5];
+		forwardPacketToAll(message, clientID);
+	}
+	catch (IOException e)
+	{	e.printStackTrace();
+	}	}
 	// Informs a client of the details for a remote client�s avatar. This message is in response 
 	// to the server receiving a DETAILS_FOR message from a remote client. That remote client�s 
 	// message�s localId becomes the remoteId for this message, and the remote client�s message�s 
@@ -151,7 +199,9 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 		{	String message = new String("dsfr," + remoteId.toString());
 			message += "," + position[0];
 			message += "," + position[1];
-			message += "," + position[2];	
+			message += "," + position[2];
+			message += "," + position[3];
+			message += "," + position[4];
 			sendPacket(message, clientID);
 		} 
 		catch (IOException e) 
@@ -214,4 +264,15 @@ public class GameServerUDP extends GameConnectionServer<UUID>
 	{	e.printStackTrace();
 	}
 	}
+
+	public void sendChangeMessages(UUID clientID, String[] position)
+	{	try
+	{	String message = new String("change," + clientID.toString());
+		message += "," + position[0];
+		message += "," + position[1];
+		forwardPacketToAll(message, clientID);
+	}
+	catch (IOException e)
+	{	e.printStackTrace();
+	}	}
 }

@@ -43,7 +43,7 @@ public class ProtocolClient extends GameConnectionClient
 			{	if(messageTokens[1].compareTo("success") == 0)
 				{	System.out.println("join success confirmed");
 					game.setIsConnected(true);
-					sendCreateMessage(game.getPlayerPosition());
+					sendCreateMessage(game.getPlayerPosition(), game.getAvaShapePath(), game.getAvaTexturePath());
 				}
 				if(messageTokens[1].compareTo("failure") == 0)
 				{	System.out.println("join failure confirmed");
@@ -75,10 +75,15 @@ public class ProtocolClient extends GameConnectionClient
 					Float.parseFloat(messageTokens[3]),
 					Float.parseFloat(messageTokens[4]));
 
+				String obj = messageTokens[5];
+				String texture = messageTokens[6];
+
 				try
-				{	ghostManager.createGhostAvatar(ghostID, ghostPosition);
+				{
+					ghostManager.createGhostAvatar(ghostID, ghostPosition, obj, texture);
 				}	catch (IOException e)
-				{	System.out.println("error creating ghost avatar");
+				{
+					System.out.println("error creating ghost avatar");
 				}
 			}
 			
@@ -89,7 +94,7 @@ public class ProtocolClient extends GameConnectionClient
 				// Send the local client's avatar's information
 				// Parse out the id into a UUID
 				UUID ghostID = UUID.fromString(messageTokens[1]);
-				sendDetailsForMessage(ghostID, game.getPlayerPosition());
+				sendDetailsForMessage(ghostID, game.getPlayerPosition(), game.getAvaShapePath(), game.getAvaTexturePath());
 			}
 			
 			// Handle MOVE message
@@ -137,49 +142,71 @@ public class ProtocolClient extends GameConnectionClient
 				ghostManager.updateGhostAvatarRotation(ghostID, rotation);
 			}
 
-			if (messageTokens[0].compareTo("createNPC") == 0)
+			if (messageTokens[0].compareTo("shoot") == 0)
 			{
-				Vector3f ghostPosition = new Vector3f(
-					Float.parseFloat(messageTokens[1]),
-					Float.parseFloat(messageTokens[2]),
-					Float.parseFloat(messageTokens[3]));
-				try
-				{
-					createGhostNPC(ghostPosition);
-				} catch (Exception e) {
-					System.out.println("could not create ghostNPC");
-					e.printStackTrace();
-				}
-			}
+				// turns a ghost avatar
+				// Parse out the id into a UUID
+				UUID ghostID = UUID.fromString(messageTokens[1]);
 
-
-			if (messageTokens[0].compareTo("isnear") == 0)
-			{
-				Vector3f ghostPosition = new Vector3f(
-					Float.parseFloat(messageTokens[1]),
-					Float.parseFloat(messageTokens[2]),
-					Float.parseFloat(messageTokens[3]));
-			}
-
-			if (messageTokens[0].compareTo("NPCinfo") == 0)
-			{
-				Vector3f NPCPosition = new Vector3f(
-					Float.parseFloat(messageTokens[1]),
-					Float.parseFloat(messageTokens[2]),
-					Float.parseFloat(messageTokens[3]));
-				float gsize = Float.parseFloat(messageTokens[4]);
-				updateGhostNPC(NPCPosition, gsize);
-			}
-
-			/*if (messageTokens[0].compareTo("mNPC") == 0)
-			{
-				Vector3f ghostPosition = new Vector3f(
+				// Parse out the position into a Vector3f
+				Vector3f location = new Vector3f(
 					Float.parseFloat(messageTokens[2]),
 					Float.parseFloat(messageTokens[3]),
 					Float.parseFloat(messageTokens[4]));
-				createGhostNPC(ghostPosition);
-				System.out.println("npc new created");
-			}*/
+
+				float[] velocity = {
+					Float.parseFloat(messageTokens[5]),
+					Float.parseFloat(messageTokens[6]),
+					Float.parseFloat(messageTokens[7])};
+
+				game.enemyBullet(location, velocity);
+			}
+
+			if (messageTokens[0].compareTo("gernade") == 0)
+			{
+				// turns a ghost avatar
+				// Parse out the id into a UUID
+				UUID ghostID = UUID.fromString(messageTokens[1]);
+
+				// Parse out the position into a Vector3f
+				Vector3f location = new Vector3f(
+					Float.parseFloat(messageTokens[2]),
+					Float.parseFloat(messageTokens[3]),
+					Float.parseFloat(messageTokens[4]));
+
+				float[] velocity = {
+					Float.parseFloat(messageTokens[5]),
+					Float.parseFloat(messageTokens[6]),
+					Float.parseFloat(messageTokens[7])};
+
+				game.enemyGernade(location, velocity);
+			}
+
+			if (messageTokens[0].compareTo("change") == 0)
+			{
+				// turns a ghost avatar
+				// Parse out the id into a UUID
+				UUID ghostID = UUID.fromString(messageTokens[1]);
+
+				// Parse out the position into a Vector3f
+				String shape = messageTokens[2];
+				String texture = messageTokens[3];
+
+				try
+				{
+					ghostManager.changeGhostAvatar(ghostID, shape, texture);
+				}	catch (IOException e)
+				{
+					System.out.println("error changing ghost avatar");
+				}
+
+			}
+
+			if (messageTokens[0].compareTo("death") == 0)
+			{
+				game.addKills();
+			}
+
 		}
 	}
 	
@@ -210,13 +237,14 @@ public class ProtocolClient extends GameConnectionClient
 	// with the server.
 	// Message Format: (create,localId,x,y,z) where x, y, and z represent the position
 
-	public void sendCreateMessage(Vector3f position)
+	public void sendCreateMessage(Vector3f position, String obj, String texture)
 	{	try 
 		{	String message = new String("create," + id.toString());
 			message += "," + position.x();
 			message += "," + position.y();
 			message += "," + position.z();
-			
+			message += "," + obj;
+			message += "," + texture;
 			sendPacket(message);
 		} catch (IOException e) 
 		{	e.printStackTrace();
@@ -228,13 +256,14 @@ public class ProtocolClient extends GameConnectionClient
 	// from the server.
 	// Message Format: (dsfr,remoteId,localId,x,y,z) where x, y, and z represent the position.
 
-	public void sendDetailsForMessage(UUID remoteId, Vector3f position)
+	public void sendDetailsForMessage(UUID remoteId, Vector3f position, String obj, String texture)
 	{	try 
 		{	String message = new String("dsfr," + remoteId.toString() + "," + id.toString());
 			message += "," + position.x();
 			message += "," + position.y();
 			message += "," + position.z();
-			
+			message += "," + obj;
+			message += "," + texture;
 			sendPacket(message);
 		} catch (IOException e) 
 		{	e.printStackTrace();
@@ -281,56 +310,59 @@ public class ProtocolClient extends GameConnectionClient
 		}
 	}
 
-	// ------------- GHOST NPC SECTION --------------
-	private void createGhostNPC(Vector3f position)
+	public void sendBulletInfo(Vector3f location, float[] velocity)
 	{
-		try
-		{
-			if (ghostNPC == null)
-			{
-				ghostNPC = new GhostNPC(0, game.getNPCshape(), game.getNPCtexture(), position);
-				Matrix4f initialTranslation = (new Matrix4f()).translation(-1f, 0f, 1f);
-				ghostNPC.setLocalTranslation(initialTranslation);
-				ghostNPC.getRenderStates().setModelOrientationCorrection(
-					(new Matrix4f()).rotationY((float) java.lang.Math.toRadians(90.0f)));
-				Matrix4f initialRotation = (new Matrix4f()).rotationY((float) java.lang.Math.toRadians(135.0f));
-				ghostNPC.setLocalRotation(initialRotation);
-				Matrix4f initialScale = (new Matrix4f()).scaling(0.2f);
-				ghostNPC.setLocalScale(initialScale);
-
-				Vector3f loc = ghostNPC.getWorldLocation();
-				GameObject terr = game.getTerr();
-				float height = terr.getHeight(loc.x(), loc.z());
-				ghostNPC.setLocalLocation(new Vector3f(loc.x(), height + 0.75f, loc.z()));
-			}
-
-
-		}catch (Exception e)
-		{
+		try {
+			String message = new String("shoot," + id.toString());
+			message += "," + location.x();
+			message += "," + location.y();
+			message += "," + location.z();
+			message += "," + velocity[0];
+			message += "," + velocity[1];
+			message += "," + velocity[2];
+			sendPacket(message);
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
 	}
-	private void updateGhostNPC(Vector3f position, double gsize)
+
+	public void sendGernadeInfo(Vector3f location, float[] velocity)
 	{
-		boolean gs;
-		if (ghostNPC == null) {
-			try {
-				createGhostNPC(position);
-			} catch (Exception e) {
-				System.out.println("error creating npc");
-			}
+		try {
+			String message = new String("gernade," + id.toString());
+			message += "," + location.x();
+			message += "," + location.y();
+			message += "," + location.z();
+			message += "," + velocity[0];
+			message += "," + velocity[1];
+			message += "," + velocity[2];
+			sendPacket(message);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-		Vector3f tempPos = position;
-		GameObject terr = game.getTerr();
-		float height = terr.getHeight(tempPos.x(), tempPos.z());
-		position.add(0, height + 0.75f, 0);
-		ghostNPC.setPosition(position);
-		//if (gsize == 0.02f) gs=false; else gs=true;
-		//ghostNPC.setSize(gs);
 	}
 
+	public void sendChangeChar( String obj, String texture)
+	{
+		try {
+			String message = new String("change," + id.toString());
+			message += "," + obj;
+			message += "," + texture;
+			sendPacket(message);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
-	// more additions to the network protocol to handle ghosts:
+	public void sendDeathMessage()
+	{
+		try {
+			String message = new String("dead," + id.toString());
+			sendPacket(message);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 
 }

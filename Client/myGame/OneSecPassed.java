@@ -1,11 +1,16 @@
+package myGame;
+
 import tage.ai.behaviortrees.BTCondition;
 
-public class GetSmall extends BTCondition {
+public class OneSecPassed extends BTCondition {
         NPC npc;
-        GetSmall(NPC npc)
+
+
+        OneSecPassed(NPC n, boolean toNegate)
         {
-                super(false);
-                npc = npc;
+                super(toNegate);
+                npc = n;
+
         }
 
         @Override

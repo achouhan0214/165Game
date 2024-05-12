@@ -9,6 +9,7 @@ import java.util.Vector;
 import org.joml.*;
 
 import tage.*;
+import tage.shapes.ImportedModel;
 
 public class GhostManager
 {
@@ -19,15 +20,21 @@ public class GhostManager
 	{	game = (MyGame)vfrg;
 	}
 	
-	public void createGhostAvatar(UUID id, Vector3f position) throws IOException
+	public void createGhostAvatar(UUID id, Vector3f position, String obj, String texture) throws IOException
 	{	System.out.println("adding ghost with ID --> " + id);
-		ObjShape s = game.getGhostShape();
-		TextureImage t = game.getGhostTexture();
+		ObjShape s = game.getPlayerShape(obj);
+		TextureImage t = game.getPlayerTexture(texture);
 		GhostAvatar newAvatar = new GhostAvatar(id, s, t, position);
 		Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
 		newAvatar.setLocalScale(initialScale);
-		newAvatar.getRenderStates().setModelOrientationCorrection(
-			(new Matrix4f()).rotationY((float)java.lang.Math.toRadians(2250f)));
+		if(obj.equals("dolphinLowPoly.obj"))
+		{
+			newAvatar.getRenderStates().setModelOrientationCorrection(
+				(new Matrix4f()).rotationY((float) java.lang.Math.toRadians(0)));
+		}else {
+			newAvatar.getRenderStates().setModelOrientationCorrection(
+				(new Matrix4f()).rotationY((float)java.lang.Math.toRadians(2250f)));
+		}
 		ghostAvatars.add(newAvatar);
 	}
 	
@@ -72,4 +79,22 @@ public class GhostManager
 		{	System.out.println("tried to update ghost avatar position, but unable to find ghost in list");
 		}
 	}
+
+	public void changeGhostAvatar(UUID id, String obj, String texture) throws IOException
+	{	System.out.println("change ghost with ID --> " + id);
+		GhostAvatar ghostAvatar = findAvatar(id);
+		if(ghostAvatar != null)
+		{
+			ObjShape s = game.getPlayerShape(obj);
+			TextureImage t = game.getPlayerTexture(texture);
+			ghostAvatar.setShape(s);
+			ghostAvatar.setTextureImage(t);
+			if(obj.equals("dolphinLowPoly.obj"))
+			{
+				ghostAvatar.getRenderStates().setModelOrientationCorrection(
+					(new Matrix4f()).rotationY((float) java.lang.Math.toRadians(0)));
+			}
+		}
+	}
+
 }
